@@ -1,0 +1,35 @@
+server:
+  port: 8081
+
+spring:
+  application:
+    name: boxue-backend
+  datasource:
+    url: jdbc:mysql://127.0.0.1:3307/boxue?useUnicode=true&characterEncoding=UTF-8&connectionCollation=utf8mb4_unicode_ci&serverTimezone=Asia/Shanghai&useSSL=false&allowPublicKeyRetrieval=true
+    username: boxue
+    password: boxue123
+    driver-class-name: com.mysql.cj.jdbc.Driver
+  data:
+    redis:
+      host: 127.0.0.1
+      port: 6379
+      database: 0
+      timeout: 3s
+
+mybatis-plus:
+  configuration:
+    map-underscore-to-camel-case: true
+    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
+  global-config:
+    db-config:
+      id-type: auto
+
+boxue:
+  jwt:
+    # 学习环境密钥，正式项目应放到环境变量
+    secret: boxue-learning-jwt-secret-key-32bytes!!
+    expire-hours: 2
+
+logging:
+  level:
+    com.boxue: info

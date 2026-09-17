@@ -1,0 +1,46 @@
+# 博学优课 - 本地基础设施
+# 说明：本机已占用 3306/8080，所以 MySQL 映射到 3307，Redis 用 6379
+services:
+  mysql:
+    image: mysql:8.0
+    container_name: boxue-mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: root123
+      MYSQL_DATABASE: boxue
+      MYSQL_USER: boxue
+      MYSQL_PASSWORD: boxue123
+      TZ: Asia/Shanghai
+    ports:
+      - "3307:3306"
+    volumes:
+      - boxue-mysql-data:/var/lib/mysql
+      - ./docker/mysql/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    command:
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_unicode_ci
+      - --default-authentication-plugin=mysql_native_password
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-uroot", "-proot123"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  redis:
+    image: redis:7
+    container_name: boxue-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - boxue-redis-data:/data
+    command: ["redis-server", "--appendonly", "yes"]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+volumes:
+  boxue-mysql-data:
+  boxue-redis-data:
