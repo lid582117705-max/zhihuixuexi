@@ -32,7 +32,7 @@ mvn spring-boot:run
 - GET  /api/orders/{id}          # 需要登录，只能看自己的订单
 
 ## 面试笔记（Obsidian）
-- 位置：C:\Users\李浩栋\Documents\Obsidian Vault\面试准备\博学优课项目-面试题库.md
+- 位置：C:\Users\李浩栋\Documents\Obsidian Vault\Notebook导入\博学优课项目-面试题库.md
 - 每学完一块内容，把对应面试题和背诵版答案追加进去
 
 ## 阶段三：RabbitMQ 延时关单（已完成）
