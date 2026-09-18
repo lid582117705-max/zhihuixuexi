@@ -29,4 +29,10 @@ public class OrderController {
     public Result<Order> detail(@PathVariable Long id) {
         return Result.ok(orderService.getById(id));
     }
+
+    /** 模拟支付成功 */
+    @PostMapping("/{id}/pay")
+    public Result<Order> pay(@PathVariable Long id) {
+        return Result.ok(orderService.pay(id));
+    }
 }

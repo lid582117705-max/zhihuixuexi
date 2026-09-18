@@ -15,6 +15,11 @@ spring:
       port: 6379
       database: 0
       timeout: 3s
+  rabbitmq:
+    host: 127.0.0.1
+    port: 5672
+    username: guest
+    password: guest
 
 mybatis-plus:
   configuration:

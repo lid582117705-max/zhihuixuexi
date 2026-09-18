@@ -41,6 +41,21 @@ services:
       timeout: 3s
       retries: 20
 
+  rabbitmq:
+    image: rabbitmq:3.12-management
+    container_name: boxue-rabbitmq
+    restart: unless-stopped
+    environment:
+      TZ: Asia/Shanghai
+    ports:
+      - "5672:5672"    # 后端程序连接的端口（AMQP 协议）
+      - "15672:15672"  # 浏览器打开的管理界面端口
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 10s
+      timeout: 10s
+      retries: 5
+
 volumes:
   boxue-mysql-data:
   boxue-redis-data:
