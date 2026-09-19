@@ -6,3 +6,6 @@ target/
 .DS_Store
 *.class
 .env
+
+# 依赖目录：不提交，npm install / mvn 会重新生成
+node_modules/

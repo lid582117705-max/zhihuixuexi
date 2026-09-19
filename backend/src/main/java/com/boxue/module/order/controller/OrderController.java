@@ -2,6 +2,8 @@ package com.boxue.module.order.controller;
 
 import com.boxue.common.result.Result;
 import com.boxue.module.order.dto.CreateOrderRequest;
+import com.boxue.module.order.dto.MineCourseVO;
+import java.util.List;
 import com.boxue.module.order.entity.Order;
 import com.boxue.module.order.service.OrderService;
 import jakarta.validation.Valid;
@@ -25,6 +27,11 @@ public class OrderController {
         return Result.ok(orderService.create(request));
     }
 
+    /** 我的已购课程：已支付订单 + 课程信息组装 */
+    @GetMapping("/mine")
+    public Result<List<MineCourseVO>> mine() {
+        return Result.ok(orderService.mine());
+    }
     @GetMapping("/{id}")
     public Result<Order> detail(@PathVariable Long id) {
         return Result.ok(orderService.getById(id));

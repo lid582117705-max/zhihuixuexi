@@ -1,12 +1,15 @@
 package com.boxue.module.order.service;
 
 import com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper;
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.boxue.common.auth.UserContext;
 import com.boxue.common.exception.AuthException;
 import com.boxue.common.exception.BizException;
 import com.boxue.config.RabbitConfig;
 import com.boxue.module.course.entity.Course;
 import com.boxue.module.course.service.CourseService;
+import com.boxue.module.course.mapper.CourseMapper;
+import com.boxue.module.order.dto.MineCourseVO;
 import com.boxue.module.order.dto.CreateOrderRequest;
 import com.boxue.module.order.entity.Order;
 import com.boxue.module.order.mapper.OrderMapper;
@@ -20,7 +23,11 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
 import java.util.concurrent.ThreadLocalRandom;
+import java.util.stream.Collectors;
 
 @Slf4j
 @Service
@@ -30,6 +37,7 @@ public class OrderService {
     private final OrderMapper orderMapper;
     private final UserMapper userMapper;
     private final CourseService courseService;
+    private final CourseMapper courseMapper;
     private final RabbitTemplate rabbitTemplate;
 
     @Transactional(rollbackFor = Exception.class)
@@ -106,6 +114,44 @@ public class OrderService {
         }
     }
 
+    /**
+     * 我的课程：查当前用户全部"已支付"订单，批量查出课程信息后组装返回。
+     * 用 selectBatchIds 一次查完所有课程，避免 for 循环里单查（N+1 问题）。
+     */
+    public List<MineCourseVO> mine() {
+        Long userId = requireLoginUserId();
+
+        // 第 1 步：查我所有已支付的订单（按支付时间倒序）
+        List<Order> orders = orderMapper.selectList(new LambdaQueryWrapper<Order>()
+                .eq(Order::getUserId, userId)
+                .eq(Order::getStatus, 1)
+                .orderByDesc(Order::getPayTime));
+        if (orders.isEmpty()) {
+            return new ArrayList<>();
+        }
+
+        // 第 2 步：批量查课程，转成 id -> Course 的 Map
+        List<Long> courseIds = orders.stream()
+                .map(Order::getCourseId)
+                .distinct()
+                .collect(Collectors.toList());
+        Map<Long, Course> courseMap = courseMapper.selectBatchIds(courseIds).stream()
+                .collect(Collectors.toMap(Course::getId, c -> c));
+
+        // 第 3 步：组装 VO
+        return orders.stream().map(order -> {
+            Course course = courseMap.get(order.getCourseId());
+            MineCourseVO vo = new MineCourseVO();
+            vo.setOrderId(order.getId());
+            vo.setCourseId(order.getCourseId());
+            vo.setCourseTitle(course != null ? course.getTitle() : "课程已下架");
+            vo.setTeacherName(course != null ? course.getTeacherName() : null);
+            vo.setCover(course != null ? course.getCover() : null);
+            vo.setAmount(order.getAmount());
+            vo.setPayTime(order.getPayTime());
+            return vo;
+        }).collect(Collectors.toList());
+    }
     public Order getById(Long id) {
         Long userId = requireLoginUserId();
         return getOwnOrder(id, userId);
