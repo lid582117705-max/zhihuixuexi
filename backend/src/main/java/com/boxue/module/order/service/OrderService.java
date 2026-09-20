@@ -17,7 +17,9 @@ import com.boxue.module.user.entity.User;
 import com.boxue.module.user.mapper.UserMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.amqp.rabbit.connection.CorrelationData;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
+import java.util.UUID;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -59,8 +61,12 @@ public class OrderService {
         orderMapper.insert(order);
 
         // 下单成功 → 往延迟队列发一条消息（内容是订单 id），到点由消费者检查是否自动关单
-        log.info("[下单] 订单 {} 已创建，发送延迟关单消息", order.getOrderNo());
-        rabbitTemplate.convertAndSend(RabbitConfig.DELAY_QUEUE, String.valueOf(order.getId()));
+        // correlationId 用来关联"生产者确认"回调：broker 收到后会带着这个 id 回 ack/nack
+        CorrelationData correlationData = new CorrelationData(UUID.randomUUID().toString());
+        log.info("[下单] 订单 {} 已创建，发送延迟关单消息，correlationId={}",
+                order.getOrderNo(), correlationData.getId());
+        // 显式传 4 参数版本避免重载歧义：exchange 用默认交换机、routingKey 用队列名
+        rabbitTemplate.convertAndSend("", RabbitConfig.DELAY_QUEUE, String.valueOf(order.getId()), correlationData);
 
         return order;
     }
