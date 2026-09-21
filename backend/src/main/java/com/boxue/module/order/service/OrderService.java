@@ -5,6 +5,7 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.boxue.common.auth.UserContext;
 import com.boxue.common.exception.AuthException;
 import com.boxue.common.exception.BizException;
+import com.boxue.common.lock.RedisLock;
 import com.boxue.config.RabbitConfig;
 import com.boxue.module.course.entity.Course;
 import com.boxue.module.course.service.CourseService;
@@ -41,6 +42,7 @@ public class OrderService {
     private final CourseService courseService;
     private final CourseMapper courseMapper;
     private final RabbitTemplate rabbitTemplate;
+    private final RedisLock redisLock;
 
     @Transactional(rollbackFor = Exception.class)
     public Order create(CreateOrderRequest request) {
@@ -52,6 +54,24 @@ public class OrderService {
 
         Course course = courseService.getById(request.getCourseId());
 
+        // ===== 加餐A：分布式锁防重（同一用户同一课程 3 秒内只允许下一单）=====
+        String lockKey = "boxue:lock:order:" + userId + ":" + course.getId();
+        String requestId = UUID.randomUUID().toString();
+        boolean locked = redisLock.tryLock(lockKey, requestId, 3);
+        if (!locked) {
+            // 没抢到锁 = 已经有一笔"同样的人买同样的课"正在处理，直接拦下
+            throw new BizException("操作太快了，这笔订单正在处理中，请稍后再试");
+        }
+        try {
+            return doCreate(user, course);
+        } finally {
+            // 无论成功失败都释放锁（3 秒过期是兜底，正常流程靠这里释放）
+            redisLock.unlock(lockKey, requestId);
+        }
+    }
+
+    /** 真正创建订单的逻辑（原 create 的主体，被分布式锁包住） */
+    private Order doCreate(User user, Course course) {
         Order order = new Order();
         order.setOrderNo(generateOrderNo());
         order.setUserId(user.getId());
