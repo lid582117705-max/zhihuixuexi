@@ -44,6 +44,9 @@ public class RabbitConfig {
     public static final String BUSINESS_DLX_EXCHANGE = "order.business.dlx.exchange";
     /** 业务死信队列：重试耗尽仍失败的消息，等人工处理 */
     public static final String DEAD_QUEUE = "order.dead.queue";
+    /** 秒杀队列：抢购成功先发消息进来，消费者慢慢落库（削峰填谷） */
+    public static final String SECKILL_QUEUE = "seckill.order.queue";
+
     /** 业务死信路由键 */
     public static final String DEAD_ROUTING_KEY = "order.dead";
 
@@ -77,6 +80,15 @@ public class RabbitConfig {
     @Bean
     public Binding closeBinding() {
         return BindingBuilder.bind(closeQueue()).to(dlxExchange()).with(CLOSE_ROUTING_KEY);
+    }
+
+    /** 秒杀队列：抢购成功 → 发消息 → 消费者慢慢落库；处理失败重试耗尽 → 复用业务死信 */
+    @Bean
+    public Queue seckillQueue() {
+        Map<String, Object> args = new HashMap<>();
+        args.put("x-dead-letter-exchange", BUSINESS_DLX_EXCHANGE);
+        args.put("x-dead-letter-routing-key", DEAD_ROUTING_KEY);
+        return new Queue(SECKILL_QUEUE, true, false, false, args);
     }
 
     /** 业务死信交换机：Close.queue 失败消息的归宿 */

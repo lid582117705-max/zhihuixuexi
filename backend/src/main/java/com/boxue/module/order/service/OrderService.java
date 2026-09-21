@@ -178,6 +178,32 @@ public class OrderService {
             return vo;
         }).collect(Collectors.toList());
     }
+    /**
+     * 秒杀落单（由 MQ 消费者调用）：
+     * 和普通下单走同一套订单 + 延时关单逻辑，但用户 id 来自消息而不是登录态。
+     */
+    @Transactional(rollbackFor = Exception.class)
+    public Order createSeckillOrder(Long userId, Long courseId) {
+        User user = userMapper.selectById(userId);
+        if (user == null || user.getStatus() == null || user.getStatus() != 1) {
+            throw new BizException("用户不存在或已禁用");
+        }
+        Course course = courseService.getById(courseId);
+
+        Order order = new Order();
+        order.setOrderNo(generateOrderNo());
+        order.setUserId(user.getId());
+        order.setCourseId(course.getId());
+        order.setAmount(course.getPrice());
+        order.setStatus(0);
+        orderMapper.insert(order);
+
+        // 秒杀订单同样走延时关单：15 秒不支付自动取消
+        CorrelationData correlationData = new CorrelationData(UUID.randomUUID().toString());
+        rabbitTemplate.convertAndSend("", RabbitConfig.DELAY_QUEUE, String.valueOf(order.getId()), correlationData);
+        log.info("[秒杀落单] 订单 {} 已落库，发送延迟关单消息", order.getOrderNo());
+        return order;
+    }
     public Order getById(Long id) {
         Long userId = requireLoginUserId();
         return getOwnOrder(id, userId);

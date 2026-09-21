@@ -60,6 +60,7 @@ mvn spring-boot:run
 - 加餐C（✅ 已完成并真实验证 2026-09-20）：MQ 可靠性四板斧——生产者确认(correlated+CorrelationData 回调)、持久化(durable+deliveryMode)、消费者手动ACK+本地重试3次(1s→2s 退避，代码自己实现)+显式 basicNack(requeue=false) 进死信；幂等复用原子更新 WHERE status=0
   - 验证结果：下单 → [MQ确认] correlationId 对上；15秒后关单+ack；投 abc 重试3次→拒绝→死信→死信消费者记录并 ack（dead.queue ack=5、messages=0）
   - 实战踩坑3个（详见 Obsidian 知识库 01 文件第九节）：① 队列参数不可变(406)要删队列重建；② manual 模式下 Spring retry 耗尽隐式拒收不可靠→自己实现重试+显式 nack；③ manual 全局生效，死信消费者也要手动 ack
+- Redisson（进行中）：下单防重改用 Redisson RLock（可重入+看门狗自动续期），自研 RedisLock 保留为原理版；秒杀仍用 Lua（扣库存不是抢锁场景）
 - 加餐顺序（已定 C→A→B）：加餐C ✅ → 加餐A 分布式锁（SETNX+Lua）+ 单元测试@SpringBootTest 穿插在各加餐验收里 → 加餐B 秒杀综合实战（Redis 预扣库存+Lua原子+MQ削峰落库）
 - 后端启动：cd backend && mvn spring-boot:run（端口8081）；前端：cd frontend && npm run dev（端口5173）
 - 面试笔记：C:\Users\李浩栋\Documents\Obsidian Vault\Notebook导入\博学优课项目-面试题库.md
@@ -77,7 +78,7 @@ mvn spring-boot:run
 - 运行/验证的分工（2026-09-21 你明确要求）：你自己动手跑和验证，我只负责教步骤和讲解——启动服务、下单、看日志、投消息这些全由你做；卡住了把现象贴给我，我帮你分析。我不再自己启动服务/帮跑验证
 - 面试题只讲不记；只有你说「记进去」才写入 Obsidian：Notebook导入\博学优课项目-面试题库.md
 - 测试工具：接口测试用 Postman；Redis 用 Another Redis Desktop Manager；后端在 IDEA 跑（SDK 用 JDK17）；命令在 Cursor 终端敲
-- 目标：项目要能锻炼基础功 + 简历含金量；重点是教会我，不是把项目做完
+- 目标（2026-09-21 你明确）：做一个**企业级项目**、提高简历含金量；教学上先讲原理再上工程框架（分布式锁例子：自研 SETNX+Lua 版保留理解原理，生产选择集成 Redisson）
 
 ## 环境雷区（踩过的坑，先看这条）
 - Docker Desktop 要手动打开；报 npipe 连不上 = 发动机没开
