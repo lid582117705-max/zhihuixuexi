@@ -5,8 +5,10 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.boxue.common.auth.UserContext;
 import com.boxue.common.exception.AuthException;
 import com.boxue.common.exception.BizException;
-import com.boxue.common.lock.RedisLock;
 import com.boxue.config.RabbitConfig;
+import org.redisson.api.RLock;
+import org.redisson.api.RedissonClient;
+import java.util.concurrent.TimeUnit;
 import com.boxue.module.course.entity.Course;
 import com.boxue.module.course.service.CourseService;
 import com.boxue.module.course.mapper.CourseMapper;
@@ -42,7 +44,7 @@ public class OrderService {
     private final CourseService courseService;
     private final CourseMapper courseMapper;
     private final RabbitTemplate rabbitTemplate;
-    private final RedisLock redisLock;
+    private final RedissonClient redissonClient;
 
     @Transactional(rollbackFor = Exception.class)
     public Order create(CreateOrderRequest request) {
@@ -54,19 +56,29 @@ public class OrderService {
 
         Course course = courseService.getById(request.getCourseId());
 
-        // ===== 加餐A：分布式锁防重（同一用户同一课程 3 秒内只允许下一单）=====
+        // ===== 加餐A：下单防重（生产用 Redisson：可重入 + 看门狗自动续期；原理见手写版 RedisLock）=====
         String lockKey = "boxue:lock:order:" + userId + ":" + course.getId();
-        String requestId = UUID.randomUUID().toString();
-        boolean locked = redisLock.tryLock(lockKey, requestId, 3);
-        if (!locked) {
-            // 没抢到锁 = 已经有一笔"同样的人买同样的课"正在处理，直接拦下
-            throw new BizException("操作太快了，这笔订单正在处理中，请稍后再试");
-        }
+        RLock lock = redissonClient.getLock(lockKey);
+        boolean locked = false;
         try {
+            // 等 3 秒抢锁，抢不到返回 false（不是无限等）
+            // Redisson 的 tryLock(long, unit) 会抛受检异常 InterruptedException，Java 强制必须处理
+            locked = lock.tryLock(3, TimeUnit.SECONDS);
+            if (!locked) {
+                // 没抢到锁 = 已经有一笔"同样的人买同样的课"正在处理，直接拦下
+                throw new BizException("操作太快了，这笔订单正在处理中，请稍后再试");
+            }
             return doCreate(user, course);
+        } catch (InterruptedException e) {
+            // 线程被中断（比如服务正在停机）：恢复中断标志是规范写法，不能吞掉中断信号
+            Thread.currentThread().interrupt();
+            log.warn("[下单] 抢锁被中断 lockKey={}", lockKey, e);
+            throw new BizException("系统繁忙，请稍后再试");
         } finally {
-            // 无论成功失败都释放锁（3 秒过期是兜底，正常流程靠这里释放）
-            redisLock.unlock(lockKey, requestId);
+            // 看门狗：业务没干完锁会自动续期，不会秒死；这里只释放自己当前线程持有的锁
+            if (locked && lock.isHeldByCurrentThread()) {
+                lock.unlock();
+            }
         }
     }
 

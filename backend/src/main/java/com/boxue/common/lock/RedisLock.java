@@ -10,7 +10,8 @@ import java.time.Duration;
 import java.util.Collections;
 
 /**
- * Redis 分布式锁（SETNX + Lua）
+ * Redis 分布式锁（SETNX + Lua）——原理演示版
+ * 生产环境请用 Redisson（可重入 + 看门狗自动续期），本类保留用于理解底层原理
  *
  * 解决的问题：多个进程/线程同时操作同一个资源（比如同一个人同时下同一门课）。
  * 单机场景可用 synchronized（JVM 内的锁），但项目部署多个实例后，

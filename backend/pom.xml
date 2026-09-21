@@ -40,6 +40,12 @@
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-amqp</artifactId>
         </dependency>
+        <!-- 分布式锁生产框架 Redisson（自研 RedisLock 为原理版，生产选 Redisson） -->
+        <dependency>
+            <groupId>org.redisson</groupId>
+            <artifactId>redisson</artifactId>
+            <version>3.27.2</version>
+        </dependency>
         <!-- 只用加密模块，不上整套 Spring Security 过滤器 -->
         <dependency>
             <groupId>org.springframework.security</groupId>
