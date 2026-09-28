@@ -10,7 +10,9 @@ import org.redisson.api.RLock;
 import org.redisson.api.RedissonClient;
 import java.util.concurrent.TimeUnit;
 import com.boxue.module.course.entity.Course;
-import com.boxue.module.course.mapper.CourseMapper;
+import com.boxue.module.order.feign.CourseClient;
+import com.boxue.common.result.Result;
+import java.util.HashMap;
 import com.boxue.module.order.dto.MineCourseVO;
 import com.boxue.module.order.dto.CreateOrderRequest;
 import com.boxue.module.order.entity.Order;
@@ -40,7 +42,7 @@ public class OrderService {
 
     private final OrderMapper orderMapper;
     private final UserMapper userMapper;
-    private final CourseMapper courseMapper;
+    private final CourseClient courseClient;
     private final RabbitTemplate rabbitTemplate;
     private final RedissonClient redissonClient;
 
@@ -171,8 +173,14 @@ public class OrderService {
                 .map(Order::getCourseId)
                 .distinct()
                 .collect(Collectors.toList());
-        Map<Long, Course> courseMap = courseMapper.selectBatchIds(courseIds).stream()
-                .collect(Collectors.toMap(Course::getId, c -> c));
+        // 远程调课程服务批量接口（Feign），不再直查课程表
+        Map<Long, Course> courseMap = new HashMap<>();
+        Result<List<Course>> batchResult = courseClient.batchGetCourses(courseIds);
+        if (batchResult != null && batchResult.getData() != null) {
+            for (Course c : batchResult.getData()) {
+                courseMap.put(c.getId(), c);
+            }
+        }
 
         // 第 3 步：组装 VO
         return orders.stream().map(order -> {
@@ -214,9 +222,10 @@ public class OrderService {
         log.info("[秒杀落单] 订单 {} 已落库，发送延迟关单消息", order.getOrderNo());
         return order;
     }
-    /** 共享库过渡：直查 course 表；6-4 会改成 OpenFeign 调 course-service */
+    /** 远程调课程服务拿课程（OpenFeign，替代 6-1 的共享库直查） */
     private Course courseMustExist(Long courseId) {
-        Course course = courseMapper.selectById(courseId);
+        Result<Course> result = courseClient.getCourse(courseId);
+        Course course = result == null ? null : result.getData();
         if (course == null || course.getStatus() == null || course.getStatus() != 1) {
             throw new BizException("课程不存在或已下架");
         }

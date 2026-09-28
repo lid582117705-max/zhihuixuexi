@@ -5,7 +5,8 @@ import com.boxue.common.exception.AuthException;
 import com.boxue.common.exception.BizException;
 import com.boxue.config.RabbitConfig;
 import com.boxue.module.course.entity.Course;
-import com.boxue.module.course.mapper.CourseMapper;
+import com.boxue.module.order.feign.CourseClient;
+import com.boxue.common.result.Result;
 import com.boxue.module.seckill.dto.SeckillMessage;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
@@ -34,7 +35,7 @@ public class SeckillService {
 
     public static final String STOCK_KEY_PREFIX = "seckill:stock:";
 
-    private final CourseMapper courseMapper;
+    private final CourseClient courseClient;
     private final StringRedisTemplate redisTemplate;
     private final RabbitTemplate rabbitTemplate;
     private final ObjectMapper objectMapper;
@@ -52,8 +53,9 @@ public class SeckillService {
     public Map<String, Object> seckill(Long courseId) {
         Long userId = requireLoginUserId();
         // 课程必须存在且上架（getById 内部校验）
-        // 共享库过渡：直查 course 表；6-4 会改成 OpenFeign 调 course-service
-        Course course = courseMapper.selectById(courseId);
+        // OpenFeign 远程调课程服务（替代 6-1 的共享库直查）
+        Result<Course> courseResult = courseClient.getCourse(courseId);
+        Course course = courseResult == null ? null : courseResult.getData();
         if (course == null || course.getStatus() == null || course.getStatus() != 1) {
             throw new BizException("课程不存在或已下架");
         }

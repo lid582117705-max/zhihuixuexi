@@ -12,6 +12,7 @@ import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.List;
 
 @Slf4j
@@ -59,6 +60,13 @@ public class CourseService {
         return list;
     }
 
+    /** 批量查课程（服务间内部接口用；简单实现直接查库，场景够用） */
+    public List<Course> batchGet(List<Long> ids) {
+        if (ids == null || ids.isEmpty()) {
+            return new ArrayList<>();
+        }
+        return courseMapper.selectBatchIds(ids);
+    }
     public Course getById(Long id) {
         String key = CACHE_DETAIL_PREFIX + id;
 
