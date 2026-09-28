@@ -1,0 +1,39 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: boxue-gateway
+  cloud:
+    nacos:
+      discovery:
+        server-addr: 127.0.0.1:8848
+    gateway:
+      routes:
+        - id: user-service
+          uri: lb://boxue-user-service
+          predicates:
+            - Path=/api/users/**,/api/health
+        - id: course-service
+          uri: lb://boxue-course-service
+          predicates:
+            - Path=/api/courses/**,/api/learn/**
+        - id: order-service
+          uri: lb://boxue-order-service
+          predicates:
+            - Path=/api/orders/**,/api/seckill/**
+  data:
+    redis:
+      host: 127.0.0.1
+      port: 6379
+      database: 0
+
+boxue:
+  jwt:
+    # 和三个服务同一个密钥，才能验证它们签发的 token
+    secret: boxue-learning-jwt-secret-key-32bytes!!
+    expire-hours: 2
+
+logging:
+  level:
+    com.boxue: info

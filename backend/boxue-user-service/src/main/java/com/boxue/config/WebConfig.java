@@ -1,6 +1,6 @@
 package com.boxue.config;
 
-import com.boxue.common.auth.AuthInterceptor;
+import com.boxue.common.auth.UserIdHeaderInterceptor;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.web.servlet.config.annotation.CorsRegistry;
@@ -16,7 +16,7 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 @RequiredArgsConstructor
 public class WebConfig implements WebMvcConfigurer {
 
-    private final AuthInterceptor authInterceptor;
+    private final UserIdHeaderInterceptor userIdHeaderInterceptor;
 
     @Override
     public void addCorsMappings(CorsRegistry registry) {
@@ -29,7 +29,7 @@ public class WebConfig implements WebMvcConfigurer {
 
     @Override
     public void addInterceptors(InterceptorRegistry registry) {
-        registry.addInterceptor(authInterceptor)
+        registry.addInterceptor(userIdHeaderInterceptor)
                 .addPathPatterns("/api/**")
                 .excludePathPatterns(
                         "/api/health",
