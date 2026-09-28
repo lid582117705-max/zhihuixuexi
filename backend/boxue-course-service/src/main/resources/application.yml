@@ -1,0 +1,34 @@
+server:
+  port: 8082
+
+spring:
+  application:
+    name: boxue-course-service
+  datasource:
+    url: jdbc:mysql://127.0.0.1:3307/boxue?useUnicode=true&characterEncoding=UTF-8&connectionCollation=utf8mb4_unicode_ci&serverTimezone=Asia/Shanghai&useSSL=false&allowPublicKeyRetrieval=true
+    username: boxue
+    password: boxue123
+    driver-class-name: com.mysql.cj.jdbc.Driver
+  data:
+    redis:
+      host: 127.0.0.1
+      port: 6379
+      database: 0
+      timeout: 3s
+
+boxue:
+  jwt:
+    # 三个服务必须用同一个密钥，才能验证同一批登录 token（网关统一鉴权的基础）
+    secret: boxue-learning-jwt-secret-key-32bytes!!
+    expire-hours: 2
+
+mybatis-plus:
+  configuration:
+    map-underscore-to-camel-case: true
+  global-config:
+    db-config:
+      id-type: auto
+
+logging:
+  level:
+    com.boxue: info
