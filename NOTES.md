@@ -68,7 +68,7 @@ mvn spring-boot:run
   - 6-2 Nacos 注册中心 ✅：三服务+网关注册，心跳保活/临时实例（面试题已记 Obsidian java\Spring Cloud）
   - 6-3 网关 ✅：Spring Cloud Gateway(8080) lb 路由 + 全局过滤器统一鉴权(JWT+Redis)，服务端改信 X-User-Id 头；踩坑：lb:// 必须加 spring-cloud-starter-loadbalancer（否则 503）
   - 6-4 OpenFeign ✅：订单服务远程调课程服务（单查/批量/列表），共享库过渡退役；遗留：user 表直查可当练习改 Feign
-  - 6-5 收尾：全链路走网关验证 + 面试题总结
+  - 6-5 收尾 ✅（2026-10-07）：前端改走网关 8080 + Vite 代理；网关配 globalcors；踩坑：浏览器直连 8080 被拦(ERR_BLOCKED_BY_CLIENT)→Vite 同源代理解决；axios baseURL 双 /api 404→baseURL 设 /；阶段6 面试题已入 Obsidian（Spring Cloud/Nacos/OpenFeign/网关）
 - 启动（微服务时代）：docker compose up -d（含 Nacos）；IDEA 跑 BoxueUserApplication(8081)/BoxueCourseApplication(8082)/BoxueOrderApplication(8083)/BoxueGatewayApplication(8080)；前端 npm run dev(5173) 指向网关 8080
 - 加餐顺序（已定 C→A→B）：加餐C ✅ → 加餐A 分布式锁（SETNX+Lua）+ 单元测试@SpringBootTest 穿插在各加餐验收里 → 加餐B 秒杀综合实战（Redis 预扣库存+Lua原子+MQ削峰落库）
 - 启动（微服务时代）：见进度存档「启动」行
@@ -112,7 +112,7 @@ mvn spring-boot:run
 | 加餐A | 分布式锁（SETNX+Lua）→ 单元测试（@SpringBootTest） | ✅（自研原理版+Redisson 生产版） |
 | 加餐B | 秒杀综合实战：Redis 预扣库存 + Lua 原子 + MQ 削峰落库 | ✅ |
 | 加餐C | MQ 进阶：生产者确认 + 手动ACK + 持久化 + 重试进真死信 + 幂等总结 | ✅ |
-| 6 微服务 | Gateway + 用户/课程/订单服务；服务拆分、网关统一鉴权 | 🚧 进行中：6-1 多模块✅ 6-2 Nacos✅ 6-3 网关统一鉴权✅ 6-4 OpenFeign✅；剩 6-5 收尾 |
+| 6 微服务 | Gateway + 用户/课程/订单服务；服务拆分、网关统一鉴权 | ✅（6-1 多模块 / 6-2 Nacos / 6-3 网关统一鉴权 / 6-4 OpenFeign / 6-5 前端走网关+Vite代理） |
 | 7 智能助手 | Spring AI + Tool Calling + RAG（Prompt、工具调用、检索增强） | 未来 |
 | 8 MCP 可选 | 把查询能力封装成 MCP 协议 | 可选 |
 

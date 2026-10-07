@@ -22,6 +22,14 @@ spring:
           uri: lb://boxue-order-service
           predicates:
             - Path=/api/orders/**,/api/seckill/**
+      globalcors:
+        add-to-simple-url-handler-mapping: true
+        cors-configurations:
+          '[/**]':
+            allowedOriginPatterns: "*"
+            allowedMethods: "*"
+            allowedHeaders: "*"
+            allowCredentials: true
   data:
     redis:
       host: 127.0.0.1

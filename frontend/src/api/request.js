@@ -2,7 +2,8 @@ import axios from 'axios'
 
 // 创建一个"统一出口"的 axios 实例
 const request = axios.create({
-  baseURL: 'http://localhost:8081',   // 后端地址
+  baseURL: '/',                       // 根路径：请求仍是 /api/users/login，由 Vite 代理转发到网关 8080
+  // 注意：不能设成 '/api'，否则和 api 模块里的 '/api' 前缀叠成 /api/api/xxx 404
   timeout: 5000,                      // 5 秒超时
 })
 
