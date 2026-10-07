@@ -84,6 +84,14 @@ public class UserService {
         }
     }
 
+    /** 按 id 查用户（服务间内部接口，订单服务 Feign 调用）；不存在或禁用返回 null */
+    public UserVO getById(Long id) {
+        User user = userMapper.selectById(id);
+        if (user == null || user.getStatus() == null || user.getStatus() != 1) {
+            return null;
+        }
+        return toVO(user);
+    }
     public UserVO currentUser() {
         Long userId = UserContext.getUserId();
         if (userId == null) {

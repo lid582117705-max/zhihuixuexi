@@ -11,14 +11,14 @@ import org.redisson.api.RedissonClient;
 import java.util.concurrent.TimeUnit;
 import com.boxue.module.course.entity.Course;
 import com.boxue.module.order.feign.CourseClient;
+import com.boxue.module.user.feign.UserClient;
+import com.boxue.module.user.dto.UserVO;
 import com.boxue.common.result.Result;
 import java.util.HashMap;
 import com.boxue.module.order.dto.MineCourseVO;
 import com.boxue.module.order.dto.CreateOrderRequest;
 import com.boxue.module.order.entity.Order;
 import com.boxue.module.order.mapper.OrderMapper;
-import com.boxue.module.user.entity.User;
-import com.boxue.module.user.mapper.UserMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.amqp.rabbit.connection.CorrelationData;
@@ -41,7 +41,7 @@ import java.util.stream.Collectors;
 public class OrderService {
 
     private final OrderMapper orderMapper;
-    private final UserMapper userMapper;
+    private final UserClient userClient;
     private final CourseClient courseClient;
     private final RabbitTemplate rabbitTemplate;
     private final RedissonClient redissonClient;
@@ -49,10 +49,7 @@ public class OrderService {
     @Transactional(rollbackFor = Exception.class)
     public Order create(CreateOrderRequest request) {
         Long userId = requireLoginUserId();
-        User user = userMapper.selectById(userId);
-        if (user == null || user.getStatus() == null || user.getStatus() != 1) {
-            throw new BizException("用户不存在或已禁用");
-        }
+        UserVO user = userMustExist(userId);
 
         Course course = courseMustExist(request.getCourseId());
 
@@ -83,7 +80,7 @@ public class OrderService {
     }
 
     /** 真正创建订单的逻辑（原 create 的主体，被分布式锁包住） */
-    private Order doCreate(User user, Course course) {
+    private Order doCreate(UserVO user, Course course) {
         Order order = new Order();
         order.setOrderNo(generateOrderNo());
         order.setUserId(user.getId());
@@ -202,10 +199,7 @@ public class OrderService {
      */
     @Transactional(rollbackFor = Exception.class)
     public Order createSeckillOrder(Long userId, Long courseId) {
-        User user = userMapper.selectById(userId);
-        if (user == null || user.getStatus() == null || user.getStatus() != 1) {
-            throw new BizException("用户不存在或已禁用");
-        }
+        UserVO user = userMustExist(userId);
         Course course = courseMustExist(courseId);
 
         Order order = new Order();
@@ -221,6 +215,15 @@ public class OrderService {
         rabbitTemplate.convertAndSend("", RabbitConfig.DELAY_QUEUE, String.valueOf(order.getId()), correlationData);
         log.info("[秒杀落单] 订单 {} 已落库，发送延迟关单消息", order.getOrderNo());
         return order;
+    }
+    /** 远程调用户服务校验用户（OpenFeign；不存在/禁用 = 远程返回 null） */
+    private UserVO userMustExist(Long userId) {
+        Result<UserVO> result = userClient.getUser(userId);
+        UserVO user = result == null ? null : result.getData();
+        if (user == null) {
+            throw new BizException("用户不存在或已禁用");
+        }
+        return user;
     }
     /** 远程调课程服务拿课程（OpenFeign，替代 6-1 的共享库直查） */
     private Course courseMustExist(Long courseId) {
