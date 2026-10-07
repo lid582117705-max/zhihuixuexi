@@ -33,7 +33,7 @@ mvn spring-boot:run
 - GET  /api/orders/mine          # 需要登录，我的已购课程（已支付订单+课程信息批量组装）
 
 ## 面试笔记（Obsidian）
-- 位置：C:\Users\李浩栋\Documents\Obsidian Vault\Notebook导入\博学优课项目-面试题库.md
+- 位置：C:\Users\李浩栋\Documents\Obsidian Vault\博学优课项目-面试题库.md
 - 每学完一块内容，把对应面试题和背诵版答案追加进去
 
 ## 阶段三：RabbitMQ 延时关单（已完成）
@@ -60,10 +60,19 @@ mvn spring-boot:run
 - 加餐C（✅ 已完成并真实验证 2026-09-20）：MQ 可靠性四板斧——生产者确认(correlated+CorrelationData 回调)、持久化(durable+deliveryMode)、消费者手动ACK+本地重试3次(1s→2s 退避，代码自己实现)+显式 basicNack(requeue=false) 进死信；幂等复用原子更新 WHERE status=0
   - 验证结果：下单 → [MQ确认] correlationId 对上；15秒后关单+ack；投 abc 重试3次→拒绝→死信→死信消费者记录并 ack（dead.queue ack=5、messages=0）
   - 实战踩坑3个（详见 Obsidian 知识库 01 文件第九节）：① 队列参数不可变(406)要删队列重建；② manual 模式下 Spring retry 耗尽隐式拒收不可靠→自己实现重试+显式 nack；③ manual 全局生效，死信消费者也要手动 ack
-- Redisson（进行中）：下单防重改用 Redisson RLock（可重入+看门狗自动续期），自研 RedisLock 保留为原理版；秒杀仍用 Lua（扣库存不是抢锁场景）
+- Redisson（✅ 已完成 2026-09-21）：下单防重改用 Redisson RLock（可重入+看门狗自动续期），自研 RedisLock 保留为原理版；秒杀仍用 Lua（扣库存不是抢锁场景）
+- 加餐A 分布式锁 ✅：SETNX+Lua 原理版 + Redisson 生产版 + 并发单元测试（知识库 02）
+- 加餐B 秒杀 ✅：Redis Lua 预扣库存 + MQ 削峰落库 + 幂等/补偿/失败进死信（知识库 03）
+- 阶段6 微服务（进行中 2026-09-28）：
+  - 6-1 多模块拆分 ✅：boxue-common 公共库 + user(8081)/course(8082)/order(8083) 三服务；共享库过渡 + 三服务统一 JWT 密钥
+  - 6-2 Nacos 注册中心 ✅：三服务+网关注册，心跳保活/临时实例（面试题已记 Obsidian java\Spring Cloud）
+  - 6-3 网关 ✅：Spring Cloud Gateway(8080) lb 路由 + 全局过滤器统一鉴权(JWT+Redis)，服务端改信 X-User-Id 头；踩坑：lb:// 必须加 spring-cloud-starter-loadbalancer（否则 503）
+  - 6-4 OpenFeign ✅：订单服务远程调课程服务（单查/批量/列表），共享库过渡退役；遗留：user 表直查可当练习改 Feign
+  - 6-5 收尾：全链路走网关验证 + 面试题总结
+- 启动（微服务时代）：docker compose up -d（含 Nacos）；IDEA 跑 BoxueUserApplication(8081)/BoxueCourseApplication(8082)/BoxueOrderApplication(8083)/BoxueGatewayApplication(8080)；前端 npm run dev(5173) 指向网关 8080
 - 加餐顺序（已定 C→A→B）：加餐C ✅ → 加餐A 分布式锁（SETNX+Lua）+ 单元测试@SpringBootTest 穿插在各加餐验收里 → 加餐B 秒杀综合实战（Redis 预扣库存+Lua原子+MQ削峰落库）
-- 后端启动：cd backend && mvn spring-boot:run（端口8081）；前端：cd frontend && npm run dev（端口5173）
-- 面试笔记：C:\Users\李浩栋\Documents\Obsidian Vault\Notebook导入\博学优课项目-面试题库.md
+- 启动（微服务时代）：见进度存档「启动」行
+- 面试笔记：C:\Users\李浩栋\Documents\Obsidian Vault\博学优课项目-面试题库.md
 
 ## 学习约定（你说过的，新线程必须遵守）
 - 节奏：先跑通 → 再加深（两轮制）
@@ -74,9 +83,9 @@ mvn spring-boot:run
   4. 最后面试拷打：根据这个功能的实现，列出面试官可能问的问题 + 答案（可以出题考我，但答案必须给我）
 - 不要总结「简历一句话」
 - 改完代码必须带我把具体改动逐段看一遍（你说过：光看说了哪些地方，找不到具体改了哪些代码）
-- 项目知识点记录（说「记进去」/「记录」才写）：Obsidian「Notebook导入\博学优课-知识库」目录下，每次学一个新知识点就新建一个独立文件（完整代码+讲解都存在里面），NOTES.md 不堆代码；面试题另记在「Notebook导入\博学优课项目-面试题库.md」，一条条独立写，不混代码
+- 项目知识点记录（说「记进去」/「记录」才写）：Obsidian「C:\Users\李浩栋\Documents\Obsidian Vault\java\博学优课-知识库」目录下，每次学一个新知识点就新建一个独立文件（完整代码+讲解都存在里面），NOTES.md 不堆代码；面试题另记在「C:\Users\李浩栋\Documents\Obsidian Vault\博学优课项目-面试题库.md」，一条条独立写，不混代码
 - 运行/验证的分工（2026-09-21 你明确要求）：你自己动手跑和验证，我只负责教步骤和讲解——启动服务、下单、看日志、投消息这些全由你做；卡住了把现象贴给我，我帮你分析。我不再自己启动服务/帮跑验证
-- 面试题只讲不记；只有你说「记进去」才写入 Obsidian：Notebook导入\博学优课项目-面试题库.md
+- 面试题只讲不记；只有你说「记进去」才写入 Obsidian：C:\Users\李浩栋\Documents\Obsidian Vault\博学优课项目-面试题库.md
 - 测试工具：接口测试用 Postman；Redis 用 Another Redis Desktop Manager；后端在 IDEA 跑（SDK 用 JDK17）；命令在 Cursor 终端敲
 - 目标（2026-09-21 你明确）：做一个**企业级项目**、提高简历含金量；教学上先讲原理再上工程框架（分布式锁例子：自研 SETNX+Lua 版保留理解原理，生产选择集成 Redisson）
 
@@ -100,10 +109,10 @@ mvn spring-boot:run
 | 3 订单延时 | RabbitMQ 延时关单（TTL+死信队列）+ 模拟支付 + 幂等原子更新 | ✅ |
 | 4 缓存会话 | 课程接口 Redis 缓存（Cache Aside）+ 学习对话 List | ✅ |
 | 5 Vue3 前端 | 登录/注册 + axios + 路由守卫 ✅；商城 + 下单 ✅；我的课程 + 学习对话 ✅ | ✅ |
-| 加餐A | 分布式锁（SETNX+Lua）→ 单元测试（@SpringBootTest） | 待做（前端后） |
-| 加餐B | 秒杀综合实战：Redis 预扣库存 + Lua 原子 + MQ 削峰落库 | 待做（微服务前） |
+| 加餐A | 分布式锁（SETNX+Lua）→ 单元测试（@SpringBootTest） | ✅（自研原理版+Redisson 生产版） |
+| 加餐B | 秒杀综合实战：Redis 预扣库存 + Lua 原子 + MQ 削峰落库 | ✅ |
 | 加餐C | MQ 进阶：生产者确认 + 手动ACK + 持久化 + 重试进真死信 + 幂等总结 | ✅ |
-| 6 微服务 | Gateway + 用户/课程/订单服务；服务拆分、网关统一鉴权 | 未来 |
+| 6 微服务 | Gateway + 用户/课程/订单服务；服务拆分、网关统一鉴权 | 🚧 进行中：6-1 多模块✅ 6-2 Nacos✅ 6-3 网关统一鉴权✅ 6-4 OpenFeign✅；剩 6-5 收尾 |
 | 7 智能助手 | Spring AI + Tool Calling + RAG（Prompt、工具调用、检索增强） | 未来 |
 | 8 MCP 可选 | 把查询能力封装成 MCP 协议 | 可选 |
 

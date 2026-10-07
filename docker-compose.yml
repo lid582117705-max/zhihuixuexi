@@ -56,6 +56,17 @@ services:
       timeout: 10s
       retries: 5
 
+  # 阶段6：Nacos 注册中心（服务发现 + 配置中心，单机模式）
+  nacos:
+    image: nacos/nacos-server:v2.3.2
+    container_name: boxue-nacos
+    restart: unless-stopped
+    environment:
+      MODE: standalone
+      TZ: Asia/Shanghai
+    ports:
+      - "8848:8848"   # Nacos 控制台
+      - "9848:9848"   # Nacos gRPC 通信
 volumes:
   boxue-mysql-data:
   boxue-redis-data:
