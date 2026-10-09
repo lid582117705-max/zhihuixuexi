@@ -26,6 +26,13 @@ boxue:
     secret: boxue-learning-jwt-secret-key-32bytes!!
     expire-hours: 2
 
+  ai:
+    ollama:
+      base-url: http://localhost:11434   # 本机 Ollama 服务
+      chat:
+        options:
+          model: llama3.2                # 本地模型（qwen2.5-coder 可切换）
+
 mybatis-plus:
   configuration:
     map-underscore-to-camel-case: true

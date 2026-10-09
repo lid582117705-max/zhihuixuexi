@@ -113,7 +113,12 @@ mvn spring-boot:run
 | 加餐B | 秒杀综合实战：Redis 预扣库存 + Lua 原子 + MQ 削峰落库 | ✅ |
 | 加餐C | MQ 进阶：生产者确认 + 手动ACK + 持久化 + 重试进真死信 + 幂等总结 | ✅ |
 | 6 微服务 | Gateway + 用户/课程/订单服务；服务拆分、网关统一鉴权 | ✅（6-1 多模块 / 6-2 Nacos / 6-3 网关统一鉴权 / 6-4 OpenFeign / 6-5 前端走网关+Vite代理） |
-| 7 智能助手 | Spring AI + Tool Calling + RAG（Prompt、工具调用、检索增强） | 未来 |
+| 7 智能助手 | AI 学习助教（手写 Ollama 网关，非 Spring AI 框架）+ Tool Calling + RAG | 进行中（7-1 本地模型接入 ✅，7-2 多轮记忆进行中） |
 | 8 MCP 可选 | 把查询能力封装成 MCP 协议 | 可选 |
+## 阶段7 进度（2026-10-08）
+- 7-1 ✅：AI 学习助教第一版——POST /api/learn/ai/chat，RestClient 直调本机 Ollama /api/chat（模型 llama3.2，可切 qwen2.5-coder:7b），返回值 Result<String>，异常转 BizException
+- 技术决策（重要）：不用 Spring AI 框架——spring-ai-bom 0.8.x 只在 repo.spring.io（现强制登录 401），中央/阿里/华为/腾讯都没有；新版 1.0.0-M6+ 要 Boot 3.4+ 会牵连 Spring Cloud/Nacos 全家升级 → 手写封装（企业也常自己封装 LLM 网关）
+- 7-2 进行中：多轮记忆——每次提问把 Redis List 历史（boxue:learn:chat:{userId}）发给模型，并把 user/assistant 一问一答存回 Redis，复用 LearnChatService
+- 后续：7-3 Tool Calling（查课程/订单，接 Feign）、7-4 RAG（Embedding + 简单向量检索）、7-5 前端接入（request.js 超时 5s 必须调大）
 
 - 每阶段固定节奏：讲清为什么 → 一起写最小可运行代码 → 你动手改一处 → 验收 + 面试怎么答；产出「简历一句话」
