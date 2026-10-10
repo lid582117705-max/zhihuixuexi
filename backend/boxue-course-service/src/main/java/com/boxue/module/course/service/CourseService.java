@@ -60,6 +60,15 @@ public class CourseService {
         return list;
     }
 
+    /** 工具调用用：按课程名关键词模糊搜索上架课程；关键词为空则返回全部上架课程 */
+    public List<Course> searchByTitle(String keyword) {
+        // eq(status,1)：只搜上架课程；like(条件, 列, 值)：关键词为空时不加该条件
+        return courseMapper.selectList(new LambdaQueryWrapper<Course>()
+                .eq(Course::getStatus, 1)
+                .like(keyword != null && !keyword.isBlank(), Course::getTitle, keyword)
+                .orderByDesc(Course::getId));
+    }
+
     /** 批量查课程（服务间内部接口用；简单实现直接查库，场景够用） */
     public List<Course> batchGet(List<Long> ids) {
         if (ids == null || ids.isEmpty()) {
