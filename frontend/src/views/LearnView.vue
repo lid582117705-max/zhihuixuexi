@@ -21,7 +21,7 @@
       <div class="chat-box">
         <div class="chat-head">
           <span>学习助手 · 提问板</span>
-          <span class="chat-tip">（阶段 7 接入 Spring AI 前，助手回复为模拟占位）</span>
+          <span class="chat-tip">（AI 助教：阿里云通义千问 · 支持查课程 / 资料检索 / 记住上下文）</span>
         </div>
 
         <div class="messages" ref="msgListRef">
@@ -51,7 +51,7 @@ import { nextTick, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import AppHeader from '../components/AppHeader.vue'
 import { getCourse } from '../api/course'
-import { listChat, sendChat } from '../api/learn'
+import { listChat, chatAI } from '../api/learn'
 
 const route = useRoute()
 const router = useRouter()
@@ -113,16 +113,12 @@ async function send() {
   if (!text || sending.value) return
   sending.value = true
   try {
-    // 第 1 步：发用户消息，把后端返回的这条追加进列表
-    const userMsg = await sendChat('user', text)
-    messages.value.push(userMsg)
+    // 问 AI 助教：后端会自己把一问一答存进 Redis，前端只拼本地对象展示（避免重复落库）
+    const reply = await chatAI(text)
+    const now = new Date().toISOString()
+    messages.value.push({ role: 'user', content: text, time: now })
+    messages.value.push({ role: 'assistant', content: reply, time: now })
     content.value = ''
-    scrollToBottom()
-
-    // 第 2 步：补一条模拟助手回复（阶段 7 接 Spring AI 后这里会是真的 AI 回答）
-    const reply = '收到你的提问啦：「' + text + '」。等阶段 7 接入 Spring AI 后，这里会由 AI 助教自动回答。'
-    const assistantMsg = await sendChat('assistant', reply)
-    messages.value.push(assistantMsg)
     scrollToBottom()
   } catch (e) {
     // 拦截器已提示

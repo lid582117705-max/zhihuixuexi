@@ -4,7 +4,7 @@ import axios from 'axios'
 const request = axios.create({
   baseURL: '/',                       // 根路径：请求仍是 /api/users/login，由 Vite 代理转发到网关 8080
   // 注意：不能设成 '/api'，否则和 api 模块里的 '/api' 前缀叠成 /api/api/xxx 404
-  timeout: 5000,                      // 5 秒超时
+  timeout: 10000,                     // 默认 10 秒超时；AI 接口单独放宽（chatAI 传 30 秒）
 })
 
 // 请求拦截器：每次发请求前，自动带上登录 token

@@ -122,6 +122,7 @@ mvn spring-boot:run
 - 7-3 ✅ 手写版：Tool Calling——model 声明 query_courses -> 后端查真实课程 -> role=tool 回传 -> 模型组织回答（MAX_TOOL_ROUNDS=5 防死循环）；已提交 883ab5f
 - 【重大切换 2026-10-10】手写调 Ollama 改为 **Spring AI 1.1.2 官方框架 + 阿里云百炼 DashScope（OpenAI 兼容模式，qwen-plus）**；全家桶升级：Boot 3.2.5→3.5.10、Spring Cloud 2023.0.1→2025.0.0、Alibaba 2023.0.1.0→2025.0.0.0、MyBatis-Plus 3.5.6→3.5.17、加 spring-ai-bom 1.1.2 + spring-ai-starter-model-openai；代码改用 ChatClient 链式 + @Tool（CourseTools）；yml 用 ${DASHSCOPE_API_KEY} 环境变量（密钥不提交 git）
 - 7-3b ✅：加"我的已购课程"工具 list_my_courses——OpenFeign OrderClient（@RequestHeader X-User-Id 传身份）+ order-service 内部接口 /api/orders/mine/course-ids；已提交 ffc601f（推送待 VPN）
-- 7-4 进行中：RAG 检索增强——spring-ai-vector-store + SimpleVectorStore（内存），启动时把课程资料向量化（text-embedding-v3），提问前 similaritySearch topK=3 拼进 system prompt（Document.getText()，1.1.x API 变更）
+- 7-4 ✅：RAG 检索增强——spring-ai-vector-store + SimpleVectorStore（内存），启动时把课程资料向量化（text-embedding-v3），提问前 similaritySearch topK=3 拼进 system prompt（Document.getText()，1.1.x API 变更）；已提交 ea04184，推送待 GitHub 网络
+- 7-5 进行中：前端接入 AI 助教——LearnView 学习页改调 /api/learn/ai/chat（learn.js 加 chatAI 30s 超时，全局 5s→10s），后端自动落库，前端只拼本地展示对象
 
 - 每阶段固定节奏：讲清为什么 → 一起写最小可运行代码 → 你动手改一处 → 验收 + 面试怎么答；产出「简历一句话」

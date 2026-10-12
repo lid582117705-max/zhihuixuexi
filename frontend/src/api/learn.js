@@ -9,3 +9,8 @@ export function listChat() {
 export function sendChat(role, content) {
   return request.post('/api/learn/chat', { role, content })
 }
+// 问 AI 助教一句话，返回 AI 的回答；后端会自动把这一问一答存进 Redis
+// timeout 30 秒：qwen-turbo 快，但工具调用/资料检索需要更多时间
+export function chatAI(message) {
+  return request.post('/api/learn/ai/chat', { message }, { timeout: 30000 })
+}
