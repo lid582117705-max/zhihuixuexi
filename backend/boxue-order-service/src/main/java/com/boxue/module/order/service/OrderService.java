@@ -194,6 +194,23 @@ public class OrderService {
         }).collect(Collectors.toList());
     }
     /**
+     * 内部接口用：查当前用户全部"已支付"订单的课程 id（去重）。
+     * 供 course-service 的 AI 工具跨服务调用（Feign + X-User-Id 头）。
+     */
+    public List<Long> mineCourseIds() {
+        Long userId = requireLoginUserId();
+
+        List<Order> orders = orderMapper.selectList(new LambdaQueryWrapper<Order>()
+                .eq(Order::getUserId, userId)
+                .eq(Order::getStatus, 1));
+
+        return orders.stream()
+                .map(Order::getCourseId)
+                .distinct()
+                .collect(Collectors.toList());
+    }
+
+    /**
      * 秒杀落单（由 MQ 消费者调用）：
      * 和普通下单走同一套订单 + 延时关单逻辑，但用户 id 来自消息而不是登录态。
      */

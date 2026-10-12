@@ -1,6 +1,7 @@
 package com.boxue;
 
 import org.springframework.cloud.client.discovery.EnableDiscoveryClient;
+import org.springframework.cloud.openfeign.EnableFeignClients;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
@@ -10,6 +11,7 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
  * 骨架阶段：业务代码下一轮搬入
  */
 @EnableDiscoveryClient
+@EnableFeignClients(basePackages = "com.boxue")
 @SpringBootApplication(scanBasePackages = "com.boxue")
 public class BoxueCourseApplication {
 

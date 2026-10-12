@@ -37,6 +37,12 @@ public class OrderController {
         return Result.ok(orderService.getById(id));
     }
 
+    /** 内部接口（Feign 用）：返回当前用户已支付订单的课程 id 列表，AI 工具查"我的已购"走这里 */
+    @GetMapping("/mine/course-ids")
+    public Result<List<Long>> mineCourseIds() {
+        return Result.ok(orderService.mineCourseIds());
+    }
+
     /** 模拟支付成功 */
     @PostMapping("/{id}/pay")
     public Result<Order> pay(@PathVariable Long id) {
