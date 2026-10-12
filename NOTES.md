@@ -119,6 +119,9 @@ mvn spring-boot:run
 - 7-1 ✅：AI 学习助教第一版——POST /api/learn/ai/chat，RestClient 直调本机 Ollama /api/chat（模型 llama3.2，可切 qwen2.5-coder:7b），返回值 Result<String>，异常转 BizException
 - 技术决策（重要）：不用 Spring AI 框架——spring-ai-bom 0.8.x 只在 repo.spring.io（现强制登录 401），中央/阿里/华为/腾讯都没有；新版 1.0.0-M6+ 要 Boot 3.4+ 会牵连 Spring Cloud/Nacos 全家升级 → 手写封装（企业也常自己封装 LLM 网关）
 - 7-2 ✅：多轮记忆——每次提问把 Redis List 历史（boxue:learn:chat:{userId}）发给模型，并把 user/assistant 一问一答存回 Redis，复用 LearnChatService；已提交 2011e92（7-1+7-2）
-- 7-3 ✅ 手写版：Tool Calling——model 声明 query_courses -> 后端查真实课程 -> role=tool 回传 -> 模型组织回答（MAX_TOOL_ROUNDS=5 防死循环）；已提交 883ab5f\n- 【重大切换 2026-10-10】手写调 Ollama 改为 **Spring AI 1.1.2 官方框架 + 阿里云百炼 DashScope（OpenAI 兼容模式，qwen-plus）**；全家桶升级：Boot 3.2.5→3.5.10、Spring Cloud 2023.0.1→2025.0.0、Alibaba 2023.0.1.0→2025.0.0.0、MyBatis-Plus 3.5.6→3.5.17、加 spring-ai-bom 1.1.2 + spring-ai-starter-model-openai；代码改用 ChatClient 链式 + @Tool（CourseTools）；yml 用 ${DASHSCOPE_API_KEY} 环境变量（密钥不提交 git）\n- 7-3b 进行中：加"我的已购课程"工具 list_my_courses——course-service 新增 OpenFeign OrderClient（@RequestHeader X-User-Id 传身份）+ order-service 新增内部接口 /api/orders/mine/course-ids（已支付订单去重 id）；@Tool 自动注册第二个工具\n- 后续：验证后 7-4 RAG、7-5 前端接入（request.js 超时 5s 必须调大）
+- 7-3 ✅ 手写版：Tool Calling——model 声明 query_courses -> 后端查真实课程 -> role=tool 回传 -> 模型组织回答（MAX_TOOL_ROUNDS=5 防死循环）；已提交 883ab5f
+- 【重大切换 2026-10-10】手写调 Ollama 改为 **Spring AI 1.1.2 官方框架 + 阿里云百炼 DashScope（OpenAI 兼容模式，qwen-plus）**；全家桶升级：Boot 3.2.5→3.5.10、Spring Cloud 2023.0.1→2025.0.0、Alibaba 2023.0.1.0→2025.0.0.0、MyBatis-Plus 3.5.6→3.5.17、加 spring-ai-bom 1.1.2 + spring-ai-starter-model-openai；代码改用 ChatClient 链式 + @Tool（CourseTools）；yml 用 ${DASHSCOPE_API_KEY} 环境变量（密钥不提交 git）
+- 7-3b ✅：加"我的已购课程"工具 list_my_courses——OpenFeign OrderClient（@RequestHeader X-User-Id 传身份）+ order-service 内部接口 /api/orders/mine/course-ids；已提交 ffc601f（推送待 VPN）
+- 7-4 进行中：RAG 检索增强——spring-ai-vector-store + SimpleVectorStore（内存），启动时把课程资料向量化（text-embedding-v3），提问前 similaritySearch topK=3 拼进 system prompt（Document.getText()，1.1.x API 变更）
 
 - 每阶段固定节奏：讲清为什么 → 一起写最小可运行代码 → 你动手改一处 → 验收 + 面试怎么答；产出「简历一句话」

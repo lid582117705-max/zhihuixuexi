@@ -28,6 +28,9 @@ spring:
         options:
           # qwen-turbo：百炼平台成本最低的极速响应模型
           model: qwen-turbo
+      embedding:
+        options:
+          model: text-embedding-v3      # 通义千问向量模型：把文字转成语义坐标（RAG 检索用）
 
 boxue:
   jwt:
