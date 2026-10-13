@@ -30,6 +30,8 @@
         <java.version>17</java.version>
         <mybatis-plus.version>3.5.17</mybatis-plus.version>
         <jjwt.version>0.12.5</jjwt.version>
+        <knife4j.version>4.5.0</knife4j.version>
+        <springdoc.version>2.9.1</springdoc.version>
     </properties>
 
     <dependencyManagement>
@@ -76,6 +78,23 @@
                 <type>pom</type>
                 <scope>import</scope>
             </dependency>
-        </dependencies>
+            <!-- Knife4j 接口文档（Boot3 jakarta 版） -->
+            <dependency>
+                <groupId>com.github.xiaoymin</groupId>
+                <artifactId>knife4j-openapi3-jakarta-spring-boot-starter</artifactId>
+                <version></version>
+            </dependency>
+            <!-- Knife4j 网关聚合（WebFlux 适配） -->
+            <dependency>
+                <groupId>com.github.xiaoymin</groupId>
+                <artifactId>knife4j-gateway-spring-boot-starter</artifactId>
+                <version></version>
+            </dependency>
+            <!-- springdoc 版本覆盖：knife4j 4.5.0 内置 2.2.x，Spring Boot 3.5 需要 2.9.x -->
+            <dependency>
+                <groupId>org.springdoc</groupId>
+                <artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
+                <version></version>
+            </dependency>        </dependencies>
     </dependencyManagement>
 </project>

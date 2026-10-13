@@ -149,7 +149,7 @@ mvn spring-boot:run
 |---|---|---|---|
 | 1-1 | LICENSE（MIT） | 5 分钟 | ✅ 2026-10-13 |
 | 1-2 | README ✅；推送 ✅；仓库公开 ✅（API 验证 private=False，2026-10-13） | 0.5 天 | ✅ |
-| 1-3 | Knife4j 网关聚合四服务接口文档（springdoc + knife4j-gateway-starter） | 1~1.5 天 | ⏳ |
+| 1-3 | Knife4j 网关聚合接口文档：代码完成（knife4j 4.5.0 + springdoc 2.9.1 + 网关 discover 聚合 + 6 Controller 注解 + 白名单放行），2026-10-13 待启动验证 | 1~1.5 天 | 🔧 |
 | 1-4 | docker-compose 一键部署 4 个业务服务（temurin:17-jre + 编排 mysql/redis/rabbitmq/nacos） | 1 天 | ⏳ |
 | 1-5 | Actuator + Prometheus + Grafana（JVM 面板，截图进 README） | 0.5~1 天 | ⏳ |
 | 1-6 | JMeter 压测报告（秒杀 Lua vs 无锁、缓存 vs 无缓存对比）★差异化王牌 | 1~1.5 天 | ⏳ |

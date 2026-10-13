@@ -48,3 +48,10 @@ mybatis-plus:
 logging:
   level:
     com.boxue: info
+springdoc:
+  api-docs:
+    path: /v3/api-docs
+  swagger-ui:
+    enabled: false
+knife4j:
+  enable: true

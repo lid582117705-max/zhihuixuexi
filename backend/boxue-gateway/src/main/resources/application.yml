@@ -45,3 +45,12 @@ boxue:
 logging:
   level:
     com.boxue: info
+knife4j:
+  gateway:
+    enabled: true
+    strategy: discover
+    discover:
+      enabled: true
+      version: openapi3
+      excluded-services:
+        - boxue-gateway

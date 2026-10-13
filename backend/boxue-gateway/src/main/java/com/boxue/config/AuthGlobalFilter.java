@@ -35,7 +35,12 @@ public class AuthGlobalFilter implements GlobalFilter, Ordered {
             "/api/health",
             "/api/users/register",
             "/api/users/login",
-            "/api/courses"
+            "/api/courses",
+            "/doc.html",
+            "/webjars",
+            "/v3/api-docs",
+            "/swagger-ui",
+            "/favicon.ico"
     );
 
     @Override

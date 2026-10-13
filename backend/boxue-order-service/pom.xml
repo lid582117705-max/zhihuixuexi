@@ -71,5 +71,10 @@
             <scope>test</scope>
         </dependency>
 
+        <!-- 接口文档：Knife4j + springdoc（OpenAPI3），版本由父工程管理 -->
+        <dependency>
+            <groupId>com.github.xiaoymin</groupId>
+            <artifactId>knife4j-openapi3-jakarta-spring-boot-starter</artifactId>
+        </dependency>
     </dependencies>
 </project>
