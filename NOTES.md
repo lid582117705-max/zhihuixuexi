@@ -148,7 +148,7 @@ mvn spring-boot:run
 | # | 事项 | 工时 | 状态 |
 |---|---|---|---|
 | 1-1 | LICENSE（MIT） | 5 分钟 | ✅ 2026-10-13 |
-| 1-2 | README ✅ 2026-10-13；推送 ✅（合并远端 Create LICENSE 提交后推上 GitHub）；仓库公开 ⏳（需网页操作） | 0.5 天 | 🔄 |
+| 1-2 | README ✅；推送 ✅；仓库公开 ✅（API 验证 private=False，2026-10-13） | 0.5 天 | ✅ |
 | 1-3 | Knife4j 网关聚合四服务接口文档（springdoc + knife4j-gateway-starter） | 1~1.5 天 | ⏳ |
 | 1-4 | docker-compose 一键部署 4 个业务服务（temurin:17-jre + 编排 mysql/redis/rabbitmq/nacos） | 1 天 | ⏳ |
 | 1-5 | Actuator + Prometheus + Grafana（JVM 面板，截图进 README） | 0.5~1 天 | ⏳ |
