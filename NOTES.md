@@ -76,6 +76,8 @@ mvn spring-boot:run
 
 ## 学习约定（你说过的，新线程必须遵守）
 - 节奏：先跑通 → 再加深（两轮制）
+- **【2026-10-13 新增强制条】**：**NOTES.md 要实时跟进进度**——每完成一小步（写完一个文件、跑通一个功能、修好一个坑）就立刻更新 NOTES.md 的进度区，不要攒到最后一次性写。新线程靠 NOTES.md 恢复上下文，写迟了等于丢进度。
+- **【2026-10-13 新增强制条】**：**面试题一律记进 Obsidian**，不再"只讲不记"——每次讲完一个功能，把面试官可能问的问题 + 背诵版答案写进 `C:\Users\李浩栋\Documents\Obsidian Vault\博学优课项目-面试题库.md`，一条条独立写，不混代码。不用等我说"记进去"。
 - 教学顺序（2026-09-19/20 你两次纠正后固定，以后每次讲都这样）：
   1. 先讲「要实现什么功能」：业务问题/场景，讲清楚为什么需要它
   2. 再讲「实现思路」：必须大白话，允许用生活比喻；出现任何一个专业术语都要当场解释，禁止术语堆砌
@@ -85,7 +87,6 @@ mvn spring-boot:run
 - 改完代码必须带我把具体改动逐段看一遍（你说过：光看说了哪些地方，找不到具体改了哪些代码）
 - 项目知识点记录（说「记进去」/「记录」才写）：Obsidian「C:\Users\李浩栋\Documents\Obsidian Vault\java\博学优课-知识库」目录下，每次学一个新知识点就新建一个独立文件（完整代码+讲解都存在里面），NOTES.md 不堆代码；面试题另记在「C:\Users\李浩栋\Documents\Obsidian Vault\博学优课项目-面试题库.md」，一条条独立写，不混代码
 - 运行/验证的分工（2026-09-21 你明确要求）：你自己动手跑和验证，我只负责教步骤和讲解——启动服务、下单、看日志、投消息这些全由你做；卡住了把现象贴给我，我帮你分析。我不再自己启动服务/帮跑验证
-- 面试题只讲不记；只有你说「记进去」才写入 Obsidian：C:\Users\李浩栋\Documents\Obsidian Vault\博学优课项目-面试题库.md
 - 测试工具：接口测试用 Postman；Redis 用 Another Redis Desktop Manager；后端在 IDEA 跑（SDK 用 JDK17）；命令在 Cursor 终端敲
 - 目标（2026-09-21 你明确）：做一个**企业级项目**、提高简历含金量；教学上先讲原理再上工程框架（分布式锁例子：自研 SETNX+Lua 版保留理解原理，生产选择集成 Redisson）
 
@@ -100,6 +101,17 @@ mvn spring-boot:run
 - 旧线程右侧编辑器出现幽灵标签 RabbitListener(queues = ...)，无法关闭、挡住正常操作
 - 根因：标签 id 含英文双引号，Codex closeTab 拼 CSS 选择器时抛 SyntaxError: not a valid selector（应用 bug）
 - 处理：另开新线程继续项目；旧线程未删除、聊天记录保留，可在列表里找回
+## 阶段一：工程化包装（进行中，2026-10-13 开始）
+目标：把已有的技术内容"展示出来"，让面试官 15 秒内看懂项目。
+- 1-1 ✅ LICENSE（2026-10-13）：根目录加 MIT，Copyright (c) 2026 DONG
+  - 踩坑：在 GitHub 首页点了「新建仓库」而不是「在已有项目里加文件」，结果建出一个名叫 LICENSE 的**空仓库**。正确做法：LICENSE 是**项目里的一个文件**，不是仓库。
+- 1-2 ⏳ 下一步：README（架构图 + 模块树 + 技术选型表 + 核心技术实现四节）
+- 1-3 ⏳ 待办：Knife4j 接口文档（网关聚合四服务）
+- 1-4 ⏳ 待办：docker-compose 一键部署四个业务服务
+- 1-5 ⏳ 待办：Actuator + Prometheus + Grafana
+- 1-6 ⏳ 待办：JMeter 压测报告（秒杀 + 缓存对比）
+- 【待解决】GitHub 仓库是**私有**的，且本地有 1 个提交未推送（网络连不上 github.com:443）。README 写好前必须先把仓库公开 + 推上去。
+
 ## 全路线图一览（新线程按这个走）
 | 阶段 | 内容 | 状态 |
 | --- | --- | --- |
@@ -123,6 +135,50 @@ mvn spring-boot:run
 - 【重大切换 2026-10-10】手写调 Ollama 改为 **Spring AI 1.1.2 官方框架 + 阿里云百炼 DashScope（OpenAI 兼容模式，qwen-plus）**；全家桶升级：Boot 3.2.5→3.5.10、Spring Cloud 2023.0.1→2025.0.0、Alibaba 2023.0.1.0→2025.0.0.0、MyBatis-Plus 3.5.6→3.5.17、加 spring-ai-bom 1.1.2 + spring-ai-starter-model-openai；代码改用 ChatClient 链式 + @Tool（CourseTools）；yml 用 ${DASHSCOPE_API_KEY} 环境变量（密钥不提交 git）
 - 7-3b ✅：加"我的已购课程"工具 list_my_courses——OpenFeign OrderClient（@RequestHeader X-User-Id 传身份）+ order-service 内部接口 /api/orders/mine/course-ids；已提交 ffc601f（推送待 VPN）
 - 7-4 ✅：RAG 检索增强——spring-ai-vector-store + SimpleVectorStore（内存），启动时把课程资料向量化（text-embedding-v3），提问前 similaritySearch topK=3 拼进 system prompt（Document.getText()，1.1.x API 变更）；已提交 ea04184，推送待 GitHub 网络
-- 7-5 进行中：前端接入 AI 助教——LearnView 学习页改调 /api/learn/ai/chat（learn.js 加 chatAI 30s 超时，全局 5s→10s），后端自动落库，前端只拼本地展示对象
+- 7-5 ✅：前端接入 AI 助教——LearnView 学习页改调 /api/learn/ai/chat（learn.js 加 chatAI 30s 超时，全局 5s→10s），后端自动落库，前端只拼本地展示对象；已提交 743475d（推送待 GitHub 网络）
+- 【里程碑】阶段 7 完成：Spring AI + DashScope + 多轮记忆 + 工具调用(课程/已购) + RAG + 前端接入，全链路跑通
+- 下一步规划中：生产级改造（见和用户的讨论：配置中心/可观测性/接口文档/限流/AI流式/会话隔离 等多选）
 
 - 每阶段固定节奏：讲清为什么 → 一起写最小可运行代码 → 你动手改一处 → 验收 + 面试怎么答；产出「简历一句话」
+## 学习路线规划（2026-10-13 定稿，新线程按此推进）
+
+> 背景：docs/ 调研文档与根目录 SAA 调研报告已删除，关键结论浓缩保留在本节；新线程靠本节恢复上下文。
+
+### 阶段一：工程化包装（README/文档/部署/监控/压测）
+| # | 事项 | 工时 | 状态 |
+|---|---|---|---|
+| 1-1 | LICENSE（MIT） | 5 分钟 | ✅ 2026-10-13 |
+| 1-2 | README（架构图+模块树+技术选型表+核心技术实现）+ 仓库公开 + 推送待推提交 | 0.5 天 | ⏳ 下一步 |
+| 1-3 | Knife4j 网关聚合四服务接口文档（springdoc + knife4j-gateway-starter） | 1~1.5 天 | ⏳ |
+| 1-4 | docker-compose 一键部署 4 个业务服务（temurin:17-jre + 编排 mysql/redis/rabbitmq/nacos） | 1 天 | ⏳ |
+| 1-5 | Actuator + Prometheus + Grafana（JVM 面板，截图进 README） | 0.5~1 天 | ⏳ |
+| 1-6 | JMeter 压测报告（秒杀 Lua vs 无锁、缓存 vs 无缓存对比）★差异化王牌 | 1~1.5 天 | ⏳ |
+
+> 对标：mall-swarm(13.2k) README 结构模板 / waynboot-mall(1.3k) 一键部署卖点 / roncoo-education(1.6k) 同赛道参照；AI 方向对标 yu-ai-agent(2.7k)、langgraph4j(2.1k)。中文开源项目极少附压测证据——1-6 是最大差异化。
+
+### 阶段二：Spring AI Alibaba 拓展（SAA 1.1.2.2）
+⚠️ 版本铁律：SAA 用 **1.1.2.2**（2026-03-10 最新稳定，对应 Spring AI 1.1.2 / Boot 3.5.x，与项目完全匹配）；**禁用 2.0.0-M1.1**（prerelease 要求 Boot 4.0.0）。接线前先关 VPN，`mvn dependency:get` 试拉 spring-ai-alibaba-bom:1.1.2.2 成功再改 pom。
+
+| # | 事项 | 工时 | 简历价值 |
+|---|---|---|---|
+| 2-1 | 换 DashScope 原生 starter（删 spring-ai-starter-model-openai，加 spring-ai-alibaba-starter-dashscope + BOM；yml 前缀 openai→dashscope；业务代码零改动=面向抽象编程实证） | 半天 | ★★ |
+| 2-2 | Rerank 两阶段检索（召回 topK=10 → gte-rerank 精排 top3）★RAG 工业标准 | 半天 | ★★★ |
+| 2-3 | embedding text-type 区分 query/document，检索准确率可量化 | 半天 | ★★ |
+| 2-4 | 官方 ChatMemory（starter-memory-redis）替换自研 Redis List → "自研到框架"演进故事 | 1 天 | ★★★ |
+| 2-5 | Nacos 动态 Prompt（starter-config-nacos，"改提示词不重启"） | 1 天 | ★★★ |
+| 2-6 | 向量库 SimpleVectorStore → Redis/PgVector（讲清内存版重启丢/多实例不一致） | 1 天 | ★★★ |
+| 2-7 | Graph 工作流：AI 助教→"学习路径规划"（graph-core：意图识别→RAG→工具查课→LLM 生成→HITL 人工确认）★简历最大王牌 | 2~3 天 | ★★★★★ |
+| 2-8 | MCP Server：把 query_courses/list_my_courses 暴露成 MCP（@McpTool），Claude/Cursor 可直接调用 | 1~2 天 | ★★★★ |
+| 2-9 | SSE 流式输出（解决前端 30s 超时硬等） | 1 天 | ★★ |
+
+建议顺序：2-1 → 2-2 → 2-4 → 2-5 → 2-7 → 2-8
+亮点押 Graph/工作流/MCP，不押 ReactAgent（官方转维护模式）。
+
+### 阶段三：企业级补强（按需，每项 0.5~2 天）
+RBAC 轻量三表 + @PreAuthorize → GitHub Actions CI（mvn verify + 徽章变真）→ Caffeine+Redis 多级缓存 → Sentinel 限流 → Zipkin 链路 → Nacos Config 配置中心 → Seata 单场景（下单链路）→ 在线演示（最有说服力）
+
+### 执行纪律（沿用学习约定）
+- 每小步完成立刻更新本节状态 ✅/⏳，并提交
+- 面试题 + 背诵版答案 → Obsidian `博学优课项目-面试题库.md`
+- 新知识点 → Obsidian `java\博学优课-知识库` 独立文件
+- 两轮制：先跑通 → 再加深
