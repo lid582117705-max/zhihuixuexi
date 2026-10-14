@@ -77,6 +77,7 @@ mvn spring-boot:run
 ## 学习约定（你说过的，新线程必须遵守）
 - 节奏：先跑通 → 再加深（两轮制）
 - **【2026-10-13 新增强制条】**：**NOTES.md 要实时跟进进度**——每完成一小步（写完一个文件、跑通一个功能、修好一个坑）就立刻更新 NOTES.md 的进度区，不要攒到最后一次性写。新线程靠 NOTES.md 恢复上下文，写迟了等于丢进度。
+- **【2026-10-14 新增强制条】**：**改完代码不提交**——先带着逐段讲解，等你本地跑通验证通过，才允许 commit + push；验证期出问题就地修复（这条同时约束所有新线程）
 - **【2026-10-13 新增强制条】**：**面试题一律记进 Obsidian**，不再"只讲不记"——每次讲完一个功能，把面试官可能问的问题 + 背诵版答案写进 `C:\Users\李浩栋\Documents\Obsidian Vault\博学优课项目-面试题库.md`，一条条独立写，不混代码。不用等我说"记进去"。
 - 教学顺序（2026-09-19/20 你两次纠正后固定，以后每次讲都这样）：
   1. 先讲「要实现什么功能」：业务问题/场景，讲清楚为什么需要它
@@ -149,7 +150,7 @@ mvn spring-boot:run
 |---|---|---|---|
 | 1-1 | LICENSE（MIT） | 5 分钟 | ✅ 2026-10-13 |
 | 1-2 | README ✅；推送 ✅；仓库公开 ✅（API 验证 private=False，2026-10-13） | 0.5 天 | ✅ |
-| 1-3 | Knife4j 网关聚合接口文档：代码完成（knife4j 4.5.0 + springdoc 2.9.1 + 网关 discover 聚合 + 6 Controller 注解 + 白名单放行），2026-10-13 待启动验证 | 1~1.5 天 | 🔧 |
+| 1-3 | Knife4j 网关聚合接口文档 ✅ 2026-10-14：springdoc 2.9.1（子服务出 OpenAPI JSON）+ knife4j-gateway 4.5.0（网关聚合 UI），6 Controller 加 @Tag/@Operation；踩坑链：① 网关要开 spring.cloud.gateway.discovery.locator.enabled ② 鉴权白名单改 contains(/v3/api-docs) ③ 子服务 springdoc.api-docs.path 带前缀与聚合 URL 对齐（三层路径一致）④ 子服务 knife4j 4.5.0 与 springdoc 2.9.1/Spring 6.2 不兼容→移除，UI 与引擎分离（网关留 knife4j UI，子服务只用 springdoc） | 1~1.5 天 | ✅ |
 | 1-4 | docker-compose 一键部署 4 个业务服务（temurin:17-jre + 编排 mysql/redis/rabbitmq/nacos） | 1 天 | ⏳ |
 | 1-5 | Actuator + Prometheus + Grafana（JVM 面板，截图进 README） | 0.5~1 天 | ⏳ |
 | 1-6 | JMeter 压测报告（秒杀 Lua vs 无锁、缓存 vs 无缓存对比）★差异化王牌 | 1~1.5 天 | ⏳ |

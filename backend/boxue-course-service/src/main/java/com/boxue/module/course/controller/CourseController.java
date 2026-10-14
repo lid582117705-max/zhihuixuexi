@@ -30,7 +30,6 @@ public class CourseController {
     }
 
     @Operation(summary = "课程详情", description = "Cache Aside 缓存")
-    @Operation(summary = "课程列表", description = "Cache Aside 缓存")
     @GetMapping("/{id}")
     public Result<Course> detail(@PathVariable Long id) {
         return Result.ok(courseService.getById(id));

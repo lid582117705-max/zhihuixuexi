@@ -82,19 +82,20 @@
             <dependency>
                 <groupId>com.github.xiaoymin</groupId>
                 <artifactId>knife4j-openapi3-jakarta-spring-boot-starter</artifactId>
-                <version></version>
+                <version>${knife4j.version}</version>
             </dependency>
             <!-- Knife4j 网关聚合（WebFlux 适配） -->
             <dependency>
                 <groupId>com.github.xiaoymin</groupId>
                 <artifactId>knife4j-gateway-spring-boot-starter</artifactId>
-                <version></version>
+                <version>${knife4j.version}</version>
             </dependency>
             <!-- springdoc 版本覆盖：knife4j 4.5.0 内置 2.2.x，Spring Boot 3.5 需要 2.9.x -->
             <dependency>
                 <groupId>org.springdoc</groupId>
                 <artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
-                <version></version>
-            </dependency>        </dependencies>
+                <version>${springdoc.version}</version>
+            </dependency>
+    </dependencies>
     </dependencyManagement>
 </project>

@@ -51,10 +51,10 @@
             <artifactId>spring-boot-starter-test</artifactId>
             <scope>test</scope>
         </dependency>
-        <!-- 接口文档：Knife4j + springdoc（OpenAPI3），版本由父工程管理 -->
+        <!-- 接口文档：springdoc（OpenAPI3）输出 JSON；UI 由网关 knife4j-gateway 聚合展示 -->
         <dependency>
-            <groupId>com.github.xiaoymin</groupId>
-            <artifactId>knife4j-openapi3-jakarta-spring-boot-starter</artifactId>
+            <groupId>org.springdoc</groupId>
+            <artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
         </dependency>
     </dependencies>
 </project>

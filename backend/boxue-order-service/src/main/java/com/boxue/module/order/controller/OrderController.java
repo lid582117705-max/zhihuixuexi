@@ -52,7 +52,6 @@ public class OrderController {
 
     /** 模拟支付成功 */
     @Operation(summary = "模拟支付成功", description = "订单状态 0→1，解锁防重")
-    @Operation(summary = "创建订单", description = "Redisson 防重 + RabbitMQ 延时关单（15 秒 TTL）")
     @PostMapping("/{id}/pay")
     public Result<Order> pay(@PathVariable Long id) {
         return Result.ok(orderService.pay(id));

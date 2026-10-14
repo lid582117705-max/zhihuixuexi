@@ -50,8 +50,6 @@ logging:
     com.boxue: info
 springdoc:
   api-docs:
-    path: /v3/api-docs
+    path: /api/courses/v3/api-docs
   swagger-ui:
     enabled: false
-knife4j:
-  enable: true

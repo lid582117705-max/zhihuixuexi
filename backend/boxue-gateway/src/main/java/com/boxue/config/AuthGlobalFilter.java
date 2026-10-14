@@ -48,7 +48,7 @@ public class AuthGlobalFilter implements GlobalFilter, Ordered {
         String path = exchange.getRequest().getURI().getPath();
 
         // 白名单 + 跨域预检：直接放行
-        if (isWhite(path) || "OPTIONS".equalsIgnoreCase(exchange.getRequest().getMethod().name())) {
+        if (isWhite(path) || path.contains("/v3/api-docs") || "OPTIONS".equalsIgnoreCase(exchange.getRequest().getMethod().name())) {
             return chain.filter(exchange);
         }
 
