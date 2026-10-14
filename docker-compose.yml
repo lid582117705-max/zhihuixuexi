@@ -26,6 +26,124 @@ services:
       timeout: 5s
       retries: 20
 
+  # ============ 阶段1-4：四个业务服务（Docker 镜像化部署） ============
+  # 关键点1：容器内连中间件用「服务名」，不是 127.0.0.1（那是容器自己）
+  # 关键点2：用 Spring Boot 宽松绑定环境变量覆盖 yml（SPRING_DATASOURCE_URL -> spring.datasource.url），yml 一行不改，本地开发零影响
+  # 关键点3：mysql/redis/rabbitmq 用 healthcheck 等"真就绪"；nacos 用 service_started（镜像内无 curl/wget，且 Nacos 客户端自带注册重试）
+  user-service:
+    build:
+      context: ./backend
+      dockerfile: boxue-user-service/Dockerfile
+    container_name: boxue-user-service
+    restart: unless-stopped
+    ports:
+      - "8081:8081"
+    environment:
+      SPRING_DATASOURCE_URL: "jdbc:mysql://mysql:3306/boxue?useUnicode=true&characterEncoding=UTF-8&connectionCollation=utf8mb4_unicode_ci&serverTimezone=Asia/Shanghai&useSSL=false&allowPublicKeyRetrieval=true"
+      SPRING_DATASOURCE_USERNAME: boxue
+      SPRING_DATASOURCE_PASSWORD: boxue123
+      SPRING_DATA_REDIS_HOST: redis
+      SPRING_CLOUD_NACOS_DISCOVERY_SERVER_ADDR: nacos:8848
+      TZ: Asia/Shanghai
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      nacos:
+        condition: service_started
+
+  course-service:
+    build:
+      context: ./backend
+      dockerfile: boxue-course-service/Dockerfile
+    container_name: boxue-course-service
+    restart: unless-stopped
+    ports:
+      - "8082:8082"
+    environment:
+      SPRING_DATASOURCE_URL: "jdbc:mysql://mysql:3306/boxue?useUnicode=true&characterEncoding=UTF-8&connectionCollation=utf8mb4_unicode_ci&serverTimezone=Asia/Shanghai&useSSL=false&allowPublicKeyRetrieval=true"
+      SPRING_DATASOURCE_USERNAME: boxue
+      SPRING_DATASOURCE_PASSWORD: boxue123
+      SPRING_DATA_REDIS_HOST: redis
+      SPRING_CLOUD_NACOS_DISCOVERY_SERVER_ADDR: nacos:8848
+      # AI 功能密钥：从宿主环境变量透传（.env 或系统环境变量）
+      DASHSCOPE_API_KEY: ${DASHSCOPE_API_KEY:-}
+      TZ: Asia/Shanghai
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      nacos:
+        condition: service_started
+
+  order-service:
+    build:
+      context: ./backend
+      dockerfile: boxue-order-service/Dockerfile
+    container_name: boxue-order-service
+    restart: unless-stopped
+    ports:
+      - "8083:8083"
+    environment:
+      SPRING_DATASOURCE_URL: "jdbc:mysql://mysql:3306/boxue?useUnicode=true&characterEncoding=UTF-8&connectionCollation=utf8mb4_unicode_ci&serverTimezone=Asia/Shanghai&useSSL=false&allowPublicKeyRetrieval=true"
+      SPRING_DATASOURCE_USERNAME: boxue
+      SPRING_DATASOURCE_PASSWORD: boxue123
+      SPRING_DATA_REDIS_HOST: redis
+      SPRING_RABBITMQ_HOST: rabbitmq
+      SPRING_CLOUD_NACOS_DISCOVERY_SERVER_ADDR: nacos:8848
+      TZ: Asia/Shanghai
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+      nacos:
+        condition: service_started
+
+  gateway:
+    build:
+      context: ./backend
+      dockerfile: boxue-gateway/Dockerfile
+    container_name: boxue-gateway
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    environment:
+      SPRING_DATA_REDIS_HOST: redis
+      SPRING_CLOUD_NACOS_DISCOVERY_SERVER_ADDR: nacos:8848
+      TZ: Asia/Shanghai
+    depends_on:
+      redis:
+        condition: service_healthy
+      nacos:
+        condition: service_started
+      user-service:
+        condition: service_started
+      course-service:
+        condition: service_started
+      order-service:
+        condition: service_started
+
+  # ============ 阶段1-4 加餐：前端容器化（Nginx 托管静态文件 + 反代 /api） ============
+  # 构建上下文是 ./frontend：容器里 npm ci + vite build 编译，再用 Nginx 提供访问
+  # 端口用 8000 而不是 80：本机 80 端口在 Windows 上常被 IIS/其他软件占用
+  # 只依赖 gateway：因为 Nginx 配置里 proxy_pass 写的是 gateway:8080，
+  # 如果网关还没起来，Nginx 启动时解析不到 gateway 这个主机名会直接启动失败
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: boxue-frontend
+    restart: unless-stopped
+    ports:
+      - "8000:80"
+    depends_on:
+      - gateway
+
   redis:
     image: redis:7
     container_name: boxue-redis

@@ -1,0 +1,16 @@
+# 构建镜像时不要把这些目录/文件发给 Docker 引擎
+# 关键：必须排除 node_modules 和 dist
+#   1. node_modules 有几百 MB、几万个小文件，发给 Docker 守护进程极慢
+#   2. 更重要：宿主机（Windows）装的 node_modules 里是 Windows 原生依赖，
+#      拷进 Linux 容器会直接报错；容器里必须用 npm ci 重新装一份 Linux 版的
+#   3. dist 是旧产物，容器里会重新 build，带了反而可能造成"改了代码没生效"的假象
+node_modules
+dist
+dist-ssr
+
+# 编辑器与系统垃圾
+.vscode
+.idea
+.DS_Store
+*.log
+npm-debug.log*

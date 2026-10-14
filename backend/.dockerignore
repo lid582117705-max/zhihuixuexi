@@ -1,0 +1,16 @@
+# 后端镜像构建上下文是 ./backend（见 docker-compose.yml 的 build.context）
+# 注意：这里不能排除 target 目录！
+#   因为 Dockerfile 里是 COPY boxue-xxx-service/target/*.jar app.jar，
+#   用的是「先本地 mvn package，再拷 jar」的策略（jar 必须在上下文里）
+#
+# 那为什么还要这个文件？
+#   排除掉源码和 IDE 垃圾，能把构建上下文从上百 MB 降到几十 MB。
+#   但 src 不能排除——万一以后改成「容器内 mvn 构建」就需要了，
+#   而且排除 src 会导致 COPY . . 类写法行为诡异。这里只剔最没用的东西。
+*/target/classes
+*/target/test-classes
+*.iml
+.idea
+.vscode
+.DS_Store
+*.log
