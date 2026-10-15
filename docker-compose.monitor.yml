@@ -1,0 +1,41 @@
+# ======================================================
+# 博学优课 - 监控栈（可插拔，不污染主 compose）
+# 启动（必须两个文件合并，本文件不能单独启动）：
+#   docker compose -f docker-compose.yml -f docker-compose.monitor.yml up -d prometheus grafana
+# Grafana 地址 http://localhost:3001（宿主 3000 被 WSL 占用），账密 admin/admin
+# 面板导入：Dashboards -> Import -> 4701（JVM Micrometer）
+# ======================================================
+services:
+  prometheus:
+    image: prom/prometheus:v2.53.0
+    container_name: boxue-prometheus
+    restart: unless-stopped
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./docker/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - boxue-prometheus-data:/prometheus
+    depends_on:
+      - user-service
+      - course-service
+      - order-service
+      - gateway
+
+  grafana:
+    image: grafana/grafana:11.1.0
+    container_name: boxue-grafana
+    restart: unless-stopped
+    ports:
+      - "3001:3000"   # 宿主机 3000 被 WSL(wslrelay) 占用，映射到 3001
+    environment:
+      GF_SECURITY_ADMIN_PASSWORD: admin
+    volumes:
+      - boxue-grafana-data:/var/lib/grafana
+      # 数据源自动配置（provisioning）：Grafana 启动时自动读出这个文件并创建 Prometheus 数据源
+      - ./docker/grafana/provisioning/datasources:/etc/grafana/provisioning/datasources:ro
+    depends_on:
+      - prometheus
+
+volumes:
+  boxue-prometheus-data:
+  boxue-grafana-data:

@@ -106,12 +106,12 @@ mvn spring-boot:run
 目标：把已有的技术内容"展示出来"，让面试官 15 秒内看懂项目。
 - 1-1 ✅ LICENSE（2026-10-13）：根目录加 MIT，Copyright (c) 2026 DONG
   - 踩坑：在 GitHub 首页点了「新建仓库」而不是「在已有项目里加文件」，结果建出一个名叫 LICENSE 的**空仓库**。正确做法：LICENSE 是**项目里的一个文件**，不是仓库。
-- 1-2 ⏳ 下一步：README（架构图 + 模块树 + 技术选型表 + 核心技术实现四节）
-- 1-3 ⏳ 待办：Knife4j 接口文档（网关聚合四服务）
-- 1-4 ⏳ 待办：docker-compose 一键部署四个业务服务
-- 1-5 ⏳ 待办：Actuator + Prometheus + Grafana
+- 1-2 ✅ 2026-10-14：README + 仓库公开 + 推送（全部完成）
+- 1-3 ✅ 2026-10-14：Knife4j 网关聚合接口文档（springdoc 2.9.1 + knife4j-gateway）
+- 1-4 ✅ 2026-10-15：docker-compose 一键部署四个业务服务（+ 前端容器化加餐）
+- 1-5 ✅ 2026-10-15：Actuator + Prometheus + Grafana 监控（JVM 面板）
 - 1-6 ⏳ 待办：JMeter 压测报告（秒杀 + 缓存对比）
-- 【待解决】GitHub 仓库是**私有**的，且本地有 1 个提交未推送（网络连不上 github.com:443）。README 写好前必须先把仓库公开 + 推上去。
+- 【已解决】GitHub 仓库已公开（2026-10-13 API 验证 private=False）；网络不稳时 push 会失败（Connection reset），重试或开 VPN 即可，提交永远在本地安全。
 
 ## 全路线图一览（新线程按这个走）
 | 阶段 | 内容 | 状态 |
@@ -151,8 +151,8 @@ mvn spring-boot:run
 | 1-1 | LICENSE（MIT） | 5 分钟 | ✅ 2026-10-13 |
 | 1-2 | README ✅；推送 ✅；仓库公开 ✅（API 验证 private=False，2026-10-13） | 0.5 天 | ✅ |
 | 1-3 | Knife4j 网关聚合接口文档 ✅ 2026-10-14：springdoc 2.9.1（子服务出 OpenAPI JSON）+ knife4j-gateway 4.5.0（网关聚合 UI），6 Controller 加 @Tag/@Operation；踩坑链：① 网关要开 spring.cloud.gateway.discovery.locator.enabled ② 鉴权白名单改 contains(/v3/api-docs) ③ 子服务 springdoc.api-docs.path 带前缀与聚合 URL 对齐（三层路径一致）④ 子服务 knife4j 4.5.0 与 springdoc 2.9.1/Spring 6.2 不兼容→移除，UI 与引擎分离（网关留 knife4j UI，子服务只用 springdoc） | 1~1.5 天 | ✅ |
-| 1-4 | docker-compose 一键部署 4 个业务服务（temurin:17-jre + 编排 mysql/redis/rabbitmq/nacos） | 1 天 | ⏳ |
-| 1-5 | Actuator + Prometheus + Grafana（JVM 面板，截图进 README） | 0.5~1 天 | ⏳ |
+| 1-4 | docker-compose 一键部署 ✅ 2026-10-15：4 个 Dockerfile(temurin:17-jre) + pom 打包插件(fat jar) + 环境变量注入(宽松绑定) + 健康检查就绪；加餐：前端容器化(多阶段 node→nginx、/api 反代、history fallback、.dockerignore)；坑：容器内连中间件用服务名、fat jar 必须有 spring-boot-maven-plugin | 1 天 | ✅ |
+| 1-5 | Actuator + Prometheus + Grafana ✅ 2026-10-15：4 服务暴露 /actuator/prometheus + monitor compose（prometheus + grafana provisioning 自动数据源，面板 4701）；坑：actuator 默认只开 health 要显式 include、monitor 不能单独启动必须 -f 合并、宿主 3000 被 wslrelay 占→grafana 用 3001 | 0.5~1 天 | ✅ |
 | 1-6 | JMeter 压测报告（秒杀 Lua vs 无锁、缓存 vs 无缓存对比）★差异化王牌 | 1~1.5 天 | ⏳ |
 
 > 对标：mall-swarm(13.2k) README 结构模板 / waynboot-mall(1.3k) 一键部署卖点 / roncoo-education(1.6k) 同赛道参照；AI 方向对标 yu-ai-agent(2.7k)、langgraph4j(2.1k)。中文开源项目极少附压测证据——1-6 是最大差异化。

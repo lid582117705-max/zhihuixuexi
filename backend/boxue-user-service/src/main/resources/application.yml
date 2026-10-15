@@ -41,3 +41,12 @@ springdoc:
     path: /api/users/v3/api-docs
   swagger-ui:
     enabled: false
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus
+  metrics:
+    tags:
+      application: ${spring.application.name}

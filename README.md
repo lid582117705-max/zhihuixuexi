@@ -150,6 +150,16 @@ npm run dev   # http://localhost:5173
 
 > 💡 端口说明：本机 3306 被占用，MySQL 映射到 3307；AI 对话需要 `DASHSCOPE_API_KEY`（阿里云百炼），模型为 qwen-turbo。
 
+## 📈 监控与可观测（1-5）
+
+- 每个服务通过 **Spring Boot Actuator** 暴露指标端点 `/actuator/prometheus`（JVM 内存/GC/线程、HTTP 请求耗时等）
+- **Prometheus** 每 15 秒抓取四个服务的指标并存储：[http://localhost:9090](http://localhost:9090)
+- **Grafana** 连接 Prometheus 展示 JVM 面板：[http://localhost:3001](http://localhost:3001)（admin/admin，导入面板 ID 4701，数据源由 provisioning 自动创建）
+
+```bash
+# 启动监控栈（必须与主 compose 合并启动）
+docker compose -f docker-compose.yml -f docker-compose.monitor.yml up -d prometheus grafana
+```
 ## 📡 接口一览（统一经网关 :8080）
 
 | 服务 | 方法 | 路径 | 说明 | 鉴权 |
@@ -170,9 +180,6 @@ npm run dev   # http://localhost:5173
 
 ## 🗺️ 后续规划
 
-- Knife4j 网关聚合接口文档（1-3）
-- docker-compose 一键部署全部业务服务（1-4）
-- Actuator + Prometheus + Grafana 监控（1-5）
 - JMeter 秒杀/缓存压测报告（1-6）
 - Spring AI Alibaba 深度集成：DashScope 原生 / Rerank / Graph 工作流 / MCP（2-x）
 - RBAC 权限模型 / GitHub Actions CI（3-x）
