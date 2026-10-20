@@ -49,4 +49,23 @@ CREATE TABLE IF NOT EXISTS `orders` (
     KEY `idx_status_create` (`status`, `create_time`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='订单表';
 
+-- 死信记录表（加餐D：死信兜底闭环）
+-- 用途：把 order.dead.queue 里的消息落库留档，支持后台查询 + 人工重放
+CREATE TABLE IF NOT EXISTS `dead_letter` (
+    `id`                 BIGINT       NOT NULL AUTO_INCREMENT COMMENT '主键',
+    `message_id`         VARCHAR(64)  DEFAULT NULL COMMENT '消息唯一标识',
+    `source_queue`       VARCHAR(128) DEFAULT NULL COMMENT '原队列（从 x-death 头解析）',
+    `source_exchange`    VARCHAR(128) DEFAULT NULL COMMENT '死信来源交换机',
+    `source_routing_key` VARCHAR(128) DEFAULT NULL COMMENT '死信路由键',
+    `biz_key`            VARCHAR(64)  DEFAULT NULL COMMENT '业务幂等键（秒杀 uniqueId，重放前清理）',
+    `body`               TEXT         COMMENT '消息原文，重放时原样投递',
+    `error_msg`          VARCHAR(512) DEFAULT NULL COMMENT '失败原因',
+    `status`             TINYINT      NOT NULL DEFAULT 0 COMMENT '0待处理 1已重放 2已忽略',
+    `replay_count`       INT          NOT NULL DEFAULT 0 COMMENT '重放次数',
+    `create_time`        DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    `handle_time`        DATETIME     DEFAULT NULL COMMENT '处理时间',
+    PRIMARY KEY (`id`),
+    KEY `idx_status_create` (`status`, `create_time`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='死信记录表';
+
 -- 演示数据改由 Spring 启动时写入，避免 Windows 挂载 SQL 文件编码乱码

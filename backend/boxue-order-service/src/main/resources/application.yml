@@ -43,21 +43,17 @@ boxue:
   jwt:
     secret: boxue-learning-jwt-secret-key-32bytes!!
     expire-hours: 2
+  admin:
+    # 管理员 userId 白名单（逗号分隔），只有这些用户能访问 /api/dead-letters/**
+    user-ids: 4
 
 logging:
   level:
     com.boxue: info
 springdoc:
   api-docs:
-    path: /api/orders/v3/api-docs
+    # 标准路径：Knife4j 网关聚合时用「服务名」做 contextPath，
+    # 若这里带业务前缀（/api/orders），contextPath 会和接口 path 重叠，文档 URL 重复
+    path: /v3/api-docs
   swagger-ui:
     enabled: false
-
-management:
-  endpoints:
-    web:
-      exposure:
-        include: health,info,prometheus
-  metrics:
-    tags:
-      application: ${spring.application.name}

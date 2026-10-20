@@ -55,7 +55,7 @@ public class OrderService {
 
         // ===== 加餐A：下单防重（生产用 Redisson：可重入 + 看门狗自动续期；原理见手写版 RedisLock）=====
         String lockKey = "boxue:lock:order:" + userId + ":" + course.getId();
-        RLock lock = redissonClient.getLock(lockKey);
+        RLock lock = redissonClient.getLock(lockKey); //redis的setIfAbsent
         boolean locked = false;
         try {
             // 等 3 秒抢锁，抢不到返回 false（不是无限等）
@@ -105,6 +105,7 @@ public class OrderService {
      */
     @Transactional(rollbackFor = Exception.class)
     public Order pay(Long orderId) {
+        //模拟发送延迟消息，消费者来监听，然后取消支付，修改订单状态
         Long userId = requireLoginUserId();
         Order order = getOwnOrder(orderId, userId);
 

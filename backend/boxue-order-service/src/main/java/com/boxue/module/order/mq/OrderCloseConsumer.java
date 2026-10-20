@@ -44,6 +44,7 @@ public class OrderCloseConsumer {
 
         for (int attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
             try {
+                //利用本地消息表来保证幂等性
                 // 干正事：关单（内部是原子更新 WHERE status=0，天然幂等，重试/重复消息无害）
                 orderService.closeIfUnpaid(Long.valueOf(orderIdStr));
 

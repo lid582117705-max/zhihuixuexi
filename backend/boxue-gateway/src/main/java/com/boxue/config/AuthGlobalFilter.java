@@ -35,7 +35,8 @@ public class AuthGlobalFilter implements GlobalFilter, Ordered {
             "/api/health",
             "/api/users/register",
             "/api/users/login",
-            "/api/courses",
+            // 注意：/api/courses 不放在这里。它是前缀匹配，会把 /api/courses/batch（内部接口）一起放行。
+            // 课程的放行逻辑在 isWhite() 里单独精确处理。
             "/doc.html",
             "/webjars",
             "/v3/api-docs",
@@ -78,10 +79,25 @@ public class AuthGlobalFilter implements GlobalFilter, Ordered {
         }
     }
 
-    /** 路径命中白名单（等于该路径 或 是该路径的子路径） */
+    /**
+     * 路径命中白名单（等于该路径 或 是该路径的子路径）
+     *
+     * 注意：网关开了 discovery.locator，会生成 /boxue-xxx-service/** 这类路由（转发时剥掉服务名前缀）。
+     * 所以 /boxue-user-service/api/users/login 也要能命中 /api/users/login 白名单，
+     * 这里先把服务名前缀去掉再比对。
+     */
     private boolean isWhite(String path) {
+        String normalized = path.replaceFirst("^/boxue-[a-z-]+-service(?=/)", "");
+
+        // 课程列表 GET /api/courses 和详情 GET /api/courses/{id} 公开；
+        // POST /api/courses/batch 是订单服务 Feign 用的内部接口，不对外放行。
+        // （Feign 直连服务实例、不经过网关，所以这里拦不到它）
+        if (normalized.equals("/api/courses") || normalized.matches("^/api/courses/\\d+$")) {
+            return true;
+        }
+
         for (String w : WHITE_LIST) {
-            if (path.equals(w) || path.startsWith(w + "/")) {
+            if (normalized.equals(w) || normalized.startsWith(w + "/")) {
                 return true;
             }
         }

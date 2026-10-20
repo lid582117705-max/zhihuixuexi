@@ -37,6 +37,7 @@ public class OrderController {
     public Result<List<MineCourseVO>> mine() {
         return Result.ok(orderService.mine());
     }
+
     @Operation(summary = "订单详情", description = "只能查自己的订单")
     @GetMapping("/{id}")
     public Result<Order> detail(@PathVariable Long id) {

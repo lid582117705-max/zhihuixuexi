@@ -93,6 +93,9 @@ services:
       SPRING_DATA_REDIS_HOST: redis
       SPRING_RABBITMQ_HOST: rabbitmq
       SPRING_CLOUD_NACOS_DISCOVERY_SERVER_ADDR: nacos:8848
+      # 管理员白名单：只有这些 userId 能访问 /api/dead-letters/**
+      # 1=demo01，4=posttest（本地联调用）
+      BOXUE_ADMIN_USER_IDS: "1,4"
       TZ: Asia/Shanghai
     depends_on:
       mysql:

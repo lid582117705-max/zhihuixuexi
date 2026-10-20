@@ -16,6 +16,7 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 public class WebConfig implements WebMvcConfigurer {
 
     private final UserIdHeaderInterceptor userIdHeaderInterceptor;
+    private final AdminAuthInterceptor adminAuthInterceptor;
 
     @Override
     public void addCorsMappings(CorsRegistry registry) {
@@ -28,8 +29,14 @@ public class WebConfig implements WebMvcConfigurer {
 
     @Override
     public void addInterceptors(InterceptorRegistry registry) {
+        // 第 1 个：把网关转发的 X-User-Id 解析进 UserContext
         registry.addInterceptor(userIdHeaderInterceptor)
                 .addPathPatterns("/api/**")
                 .excludePathPatterns("/api/health");
+
+        // 第 2 个：管理接口校验管理员权限
+        // 顺序很重要：必须排在 userIdHeaderInterceptor 之后，否则 UserContext 里还没值
+        registry.addInterceptor(adminAuthInterceptor)
+                .addPathPatterns("/api/dead-letters/**");
     }
 }

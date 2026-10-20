@@ -29,7 +29,7 @@ import java.util.Map;
 @Configuration
 @EnableRabbit
 @RequiredArgsConstructor
-public class RabbitConfig {
+public class    RabbitConfig {
 
     /** 延迟队列：下单后消息先进这里"睡觉" */
     public static final String DELAY_QUEUE = "order.delay.queue";

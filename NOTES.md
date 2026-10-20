@@ -63,6 +63,14 @@ mvn spring-boot:run
 - Redisson（✅ 已完成 2026-09-21）：下单防重改用 Redisson RLock（可重入+看门狗自动续期），自研 RedisLock 保留为原理版；秒杀仍用 Lua（扣库存不是抢锁场景）
 - 加餐A 分布式锁 ✅：SETNX+Lua 原理版 + Redisson 生产版 + 并发单元测试（知识库 02）
 - 加餐B 秒杀 ✅：Redis Lua 预扣库存 + MQ 削峰落库 + 幂等/补偿/失败进死信（知识库 03）
+- 加餐D 死信兜底 ✅（2026-10-18，代码已编译通过，待本地跑通验证）：
+  - 新增 `DeadLetterConsumer`：监听 order.dead.queue → 从 x-death 头解析原队列 → 落库 → 告警日志 → 手动 ack（落库成功才 ack；落库失败保持 unacked）
+  - 新增 `dead_letter` 表：message_id / source_queue / source_exchange / source_routing_key / biz_key / body / status(0待处理 1已重放 2已忽略) / replay_count / create_time / handle_time
+  - 新增 `DeadLetterService` + `DeadLetterController`：GET /api/dead-letters、POST /api/dead-letters/{id}/replay、POST /api/dead-letters/{id}/ignore
+  - 重放两个坑：① 必须投回原队列（receivedExchange 已被死信交换机覆盖，用 x-death[0].queue）；② 必须先清秒杀幂等标记 seckill:consume:{uniqueId}，否则被 SETNX 当重复消息跳过
+  - ⚠️ init.sql 已追加建表语句，但容器已初始化过不会重跑，需手动执行建表 SQL（见对话里的命令）
+  - 权限：新增 `AdminAuthInterceptor`（order-service/config），配置 `boxue.admin.user-ids` 白名单校验 `/api/dead-letters/**`；注册顺序必须在 UserIdHeaderInterceptor 之后
+  - 前端页面最终不做（避免 C 端暴露运维功能 + 少一个越权入口），用 Knife4j `/doc.html` 或 Postman 调接口
 - 阶段6 微服务（进行中 2026-09-28）：
   - 6-1 多模块拆分 ✅：boxue-common 公共库 + user(8081)/course(8082)/order(8083) 三服务；共享库过渡 + 三服务统一 JWT 密钥
   - 6-2 Nacos 注册中心 ✅：三服务+网关注册，心跳保活/临时实例（面试题已记 Obsidian java\Spring Cloud）
@@ -109,7 +117,10 @@ mvn spring-boot:run
 - 1-2 ✅ 2026-10-14：README + 仓库公开 + 推送（全部完成）
 - 1-3 ✅ 2026-10-14：Knife4j 网关聚合接口文档（springdoc 2.9.1 + knife4j-gateway）
 - 1-4 ✅ 2026-10-15：docker-compose 一键部署四个业务服务（+ 前端容器化加餐）
-- 1-5 ✅ 2026-10-15：Actuator + Prometheus + Grafana 监控（JVM 面板）
+- 1-5 ⛔ 2026-10-20 已整体移除：Actuator + Prometheus + Grafana 监控（原 2026-10-15 完成）
+  - 移除原因：业务本身无监控诉求；面试官不会深问，讲不深反而是负债；少 2 个容器让一键部署更轻
+  - 移除范围：docker-compose.monitor.yml、docker/prometheus/、docker/grafana/、4 个 yml 的 management 块、4 个 pom 的 actuator + micrometer 依赖、README 监控章节
+  - 想恢复：`git checkout 717690a -- docker-compose.monitor.yml docker/prometheus docker/grafana` 后补回 yml/pom 配置
 - 1-6 ⏳ 待办：JMeter 压测报告（秒杀 + 缓存对比）
 - 【已解决】GitHub 仓库已公开（2026-10-13 API 验证 private=False）；网络不稳时 push 会失败（Connection reset），重试或开 VPN 即可，提交永远在本地安全。
 
@@ -125,6 +136,7 @@ mvn spring-boot:run
 | 加餐A | 分布式锁（SETNX+Lua）→ 单元测试（@SpringBootTest） | ✅（自研原理版+Redisson 生产版） |
 | 加餐B | 秒杀综合实战：Redis 预扣库存 + Lua 原子 + MQ 削峰落库 | ✅ |
 | 加餐C | MQ 进阶：生产者确认 + 手动ACK + 持久化 + 重试进真死信 + 幂等总结 | ✅ |
+| 加餐D | 死信兜底闭环：DeadLetterConsumer + dead_letter 表 + 重放/忽略接口 | ✅（2026-10-18，待本地验证） |
 | 6 微服务 | Gateway + 用户/课程/订单服务；服务拆分、网关统一鉴权 | ✅（6-1 多模块 / 6-2 Nacos / 6-3 网关统一鉴权 / 6-4 OpenFeign / 6-5 前端走网关+Vite代理） |
 | 7 智能助手 | AI 学习助教（手写 Ollama 网关，非 Spring AI 框架）+ Tool Calling + RAG | 进行中（7-1~7-3 ✅ 手写版；**已换 Spring AI 官方框架 + 阿里云 DashScope 通义千问**，待验证） |
 | 8 MCP 可选 | 把查询能力封装成 MCP 协议 | 可选 |
@@ -145,14 +157,15 @@ mvn spring-boot:run
 
 > 背景：docs/ 调研文档与根目录 SAA 调研报告已删除，关键结论浓缩保留在本节；新线程靠本节恢复上下文。
 
-### 阶段一：工程化包装（README/文档/部署/监控/压测）
+### 阶段一：工程化包装（README/文档/部署/压测）
 | # | 事项 | 工时 | 状态 |
 |---|---|---|---|
 | 1-1 | LICENSE（MIT） | 5 分钟 | ✅ 2026-10-13 |
 | 1-2 | README ✅；推送 ✅；仓库公开 ✅（API 验证 private=False，2026-10-13） | 0.5 天 | ✅ |
 | 1-3 | Knife4j 网关聚合接口文档 ✅ 2026-10-14：springdoc 2.9.1（子服务出 OpenAPI JSON）+ knife4j-gateway 4.5.0（网关聚合 UI），6 Controller 加 @Tag/@Operation；踩坑链：① 网关要开 spring.cloud.gateway.discovery.locator.enabled ② 鉴权白名单改 contains(/v3/api-docs) ③ 子服务 springdoc.api-docs.path 带前缀与聚合 URL 对齐（三层路径一致）④ 子服务 knife4j 4.5.0 与 springdoc 2.9.1/Spring 6.2 不兼容→移除，UI 与引擎分离（网关留 knife4j UI，子服务只用 springdoc） | 1~1.5 天 | ✅ |
 | 1-4 | docker-compose 一键部署 ✅ 2026-10-15：4 个 Dockerfile(temurin:17-jre) + pom 打包插件(fat jar) + 环境变量注入(宽松绑定) + 健康检查就绪；加餐：前端容器化(多阶段 node→nginx、/api 反代、history fallback、.dockerignore)；坑：容器内连中间件用服务名、fat jar 必须有 spring-boot-maven-plugin | 1 天 | ✅ |
-| 1-5 | Actuator + Prometheus + Grafana ✅ 2026-10-15：4 服务暴露 /actuator/prometheus + monitor compose（prometheus + grafana provisioning 自动数据源，面板 4701）；坑：actuator 默认只开 health 要显式 include、monitor 不能单独启动必须 -f 合并、宿主 3000 被 wslrelay 占→grafana 用 3001 | 0.5~1 天 | ✅ |
+| 1-4b | ★502 大坑修复 ✅ 2026-10-15：后端容器重建后前端所有 /api 报 502（页面能开、网关独立访问正常）。根因=Nginx 开源版对 proxy_pass 域名**只在启动时解析一次并永久缓存 IP**，Docker 容器 IP 动态分配，gateway 重建换 IP 后前端仍打旧 IP → 502。`depends_on` 只管启动顺序，救不了。修复：`resolver 127.0.0.11 valid=10s ipv6=off;` + `set $upstream gateway:8080;` + `proxy_pass http://$upstream;`（**必须用变量形式，写死域名时 resolver 不生效**），10 秒自动恢复 | 0.5 天 | ✅ |
+| 1-5 | ~~Actuator + Prometheus + Grafana~~ ⛔ 2026-10-20 已移除：曾于 2026-10-15 完成（4 服务 /actuator/prometheus + monitor compose + 面板 4701），后判断业务无监控诉求、面试难讲深，整体剥离；坑记录保留：actuator 默认只开 health 要显式 include、monitor 不能单独启动必须 -f 合并、宿主 3000 被 wslrelay 占→grafana 用 3001 | 0.5~1 天 | ⛔ 已移除 |
 | 1-6 | JMeter 压测报告（秒杀 Lua vs 无锁、缓存 vs 无缓存对比）★差异化王牌 | 1~1.5 天 | ⏳ |
 
 > 对标：mall-swarm(13.2k) README 结构模板 / waynboot-mall(1.3k) 一键部署卖点 / roncoo-education(1.6k) 同赛道参照；AI 方向对标 yu-ai-agent(2.7k)、langgraph4j(2.1k)。中文开源项目极少附压测证据——1-6 是最大差异化。

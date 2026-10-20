@@ -24,7 +24,7 @@ spring:
         - id: order-service
           uri: lb://boxue-order-service
           predicates:
-            - Path=/api/orders/**,/api/seckill/**
+            - Path=/api/orders/**,/api/seckill/**,/api/dead-letters/**
       globalcors:
         add-to-simple-url-handler-mapping: true
         cors-configurations:
@@ -51,18 +51,20 @@ logging:
 knife4j:
   gateway:
     enabled: true
-    strategy: discover
-    discover:
-      enabled: true
-      version: openapi3
-      excluded-services:
-        - boxue-gateway
-
-management:
-  endpoints:
-    web:
-      exposure:
-        include: health,info,prometheus
-  metrics:
-    tags:
-      application: ${spring.application.name}
+    # 用 config（手动路由）模式：显式指定每个服务的文档地址，
+    # 前缀用「服务名」，与业务前缀（/api/xxx）不重叠，避免 /api/users/api/users/login 这种重复。
+    # 网关已开 discovery.locator，/boxue-xxx-service/** 路由会自动剥掉服务名前缀转发给对应服务。
+    strategy: manual
+    routes:
+      - name: 用户服务
+        service-name: boxue-user-service
+        url: /boxue-user-service/v3/api-docs
+        order: 1
+      - name: 课程服务
+        service-name: boxue-course-service
+        url: /boxue-course-service/v3/api-docs
+        order: 2
+      - name: 订单服务
+        service-name: boxue-order-service
+        url: /boxue-order-service/v3/api-docs
+        order: 3

@@ -1,0 +1,239 @@
+{
+  "info": {
+    "name": "博学优课 API",
+    "description": "博学优课项目接口集合。\n\n用法：\n1. 先跑「1. 认证 / 登录」，会自动把 token 存进集合变量\n2. 再跑其他请求，Authorization 自动带上\n\n注意：Knife4j 聚合页显示的路径会多一层前缀（/api/users/api/users/login），是文档层的已知问题，真实路径以本集合为准。",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:8080" },
+    { "key": "token", "value": "" },
+    { "key": "courseId", "value": "1" },
+    { "key": "orderId", "value": "1" },
+    { "key": "deadLetterId", "value": "1" }
+  ],
+  "item": [
+    {
+      "name": "1. 认证",
+      "item": [
+        {
+          "name": "登录（自动保存 token）",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const res = pm.response.json();",
+                  "if (res.code === 0 && res.data && res.data.token) {",
+                  "    pm.collectionVariables.set('token', res.data.token);",
+                  "    console.log('✅ token 已保存到集合变量');",
+                  "} else {",
+                  "    console.warn('❌ 登录失败：' + res.message);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"posttest\",\n  \"password\": \"123456\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/users/login",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "users", "login"]
+            }
+          }
+        },
+        {
+          "name": "当前用户信息",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/users/me",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "users", "me"]
+            }
+          }
+        },
+        {
+          "name": "退出登录",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/users/logout",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "users", "logout"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "2. 课程与订单",
+      "item": [
+        {
+          "name": "课程列表",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/courses",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "courses"]
+            }
+          }
+        },
+        {
+          "name": "课程详情",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/courses/{{courseId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "courses", "{{courseId}}"]
+            }
+          }
+        },
+        {
+          "name": "下单",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"courseId\": {{courseId}}\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/orders",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "orders"]
+            }
+          }
+        },
+        {
+          "name": "模拟支付",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/orders/{{orderId}}/pay",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "orders", "{{orderId}}", "pay"]
+            }
+          }
+        },
+        {
+          "name": "我的已购课程",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/orders/mine",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "orders", "mine"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "3. 秒杀",
+      "item": [
+        {
+          "name": "秒杀下单",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/seckill/{{courseId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "seckill", "{{courseId}}"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "4. 死信管理（需管理员）",
+      "item": [
+        {
+          "name": "死信列表（全部）",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/dead-letters",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "dead-letters"]
+            }
+          }
+        },
+        {
+          "name": "死信列表（待处理 status=0）",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/dead-letters?status=0",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "dead-letters"],
+              "query": [{ "key": "status", "value": "0" }]
+            }
+          }
+        },
+        {
+          "name": "重放死信",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/dead-letters/{{deadLetterId}}/replay",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "dead-letters", "{{deadLetterId}}", "replay"]
+            }
+          }
+        },
+        {
+          "name": "忽略死信",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/dead-letters/{{deadLetterId}}/ignore",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "dead-letters", "{{deadLetterId}}", "ignore"]
+            }
+          }
+        }
+      ]
+    }
+  ]
+}
