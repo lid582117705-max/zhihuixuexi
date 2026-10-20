@@ -38,15 +38,8 @@ logging:
     com.boxue: info
 springdoc:
   api-docs:
-    path: /api/users/v3/api-docs
+    # 标准路径：Knife4j 网关聚合时用「服务名」做 contextPath，
+    # 若这里带业务前缀（/api/users），contextPath 会和接口 path 重叠，文档 URL 变成 /api/users/api/users/login
+    path: /v3/api-docs
   swagger-ui:
     enabled: false
-
-management:
-  endpoints:
-    web:
-      exposure:
-        include: health,info,prometheus
-  metrics:
-    tags:
-      application: ${spring.application.name}
