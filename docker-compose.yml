@@ -1,5 +1,29 @@
 # 博学优课 - 本地基础设施
 # 说明：本机已占用 3306/8080，所以 MySQL 映射到 3307，Redis 用 6379
+#
+# ==================== 网络说明（重要） ====================
+# 1) Docker Compose 默认就会创建一个 <项目目录名>_default 的 bridge 网络，
+#    并把本文件里所有服务自动接进去，不需要每个服务手写 networks 也能互通。
+#    可以自己验证：docker network inspect zhihuixuexi_default
+#    → 里面能看到全部容器，且每个容器都带一条 DNS 别名（服务名）。
+#
+# 2) 但「默认网络名 = 目录名_default」这件事不稳定：换个目录名、换个项目路径，
+#    网络名就变了，容器会被接到另一张网上。所以这里显式声明一个固定名字的
+#    boxue-net，让网络身份和目录名解耦。
+#
+# 3) 为什么全程用「服务名」而不是 IP：
+#    容器 IP 是 Docker 的 DHCP 分配的，容器重建/重启后可能从 172.19.0.7 变成 .9，
+#    把 IP 写进配置 = 埋一颗定时炸弹。Docker 内置 DNS（127.0.0.11）会把服务名
+#    解析成「当前」IP，所以名字才是稳定的那个东西，IP 恰恰是我们想躲开的。
+#    容器间访问一律写 mysql / redis / rabbitmq / nacos / gateway。
+#
+# 4) 真正会被 IP 变化坑到的地方只有一处：Nginx 的 proxy_pass 默认只在启动时解析
+#    一次域名并把 IP 缓存住。这个已经在 frontend/nginx.conf 里用
+#    resolver 127.0.0.11 + 变量 proxy_pass 解决（网关重建后 10 秒内自动重解析）。
+#
+# 5) 如果确实要固定 IP：给网络加 ipam 子网，再给服务写 ipv4_address。
+#    但这会失去水平扩展能力（一个 IP 只能挂一个容器），属于下策，默认不启用。
+# ==========================================================
 services:
   mysql:
     image: mysql:8.0
@@ -25,6 +49,8 @@ services:
       interval: 5s
       timeout: 5s
       retries: 20
+    networks:
+      - boxue-net
 
   # ============ 阶段1-4：四个业务服务（Docker 镜像化部署） ============
   # 关键点1：容器内连中间件用「服务名」，不是 127.0.0.1（那是容器自己）
@@ -52,6 +78,8 @@ services:
         condition: service_healthy
       nacos:
         condition: service_started
+    networks:
+      - boxue-net
 
   course-service:
     build:
@@ -77,6 +105,8 @@ services:
         condition: service_healthy
       nacos:
         condition: service_started
+    networks:
+      - boxue-net
 
   order-service:
     build:
@@ -106,6 +136,8 @@ services:
         condition: service_healthy
       nacos:
         condition: service_started
+    networks:
+      - boxue-net
 
   gateway:
     build:
@@ -130,6 +162,8 @@ services:
         condition: service_started
       order-service:
         condition: service_started
+    networks:
+      - boxue-net
 
   # ============ 阶段1-4 加餐：前端容器化（Nginx 托管静态文件 + 反代 /api） ============
   # 构建上下文是 ./frontend：容器里 npm ci + vite build 编译，再用 Nginx 提供访问
@@ -146,6 +180,8 @@ services:
       - "8000:80"
     depends_on:
       - gateway
+    networks:
+      - boxue-net
 
   redis:
     image: redis:7
@@ -161,6 +197,8 @@ services:
       interval: 5s
       timeout: 3s
       retries: 20
+    networks:
+      - boxue-net
 
   rabbitmq:
     image: rabbitmq:3.12-management
@@ -176,6 +214,8 @@ services:
       interval: 10s
       timeout: 10s
       retries: 5
+    networks:
+      - boxue-net
 
   # 阶段6：Nacos 注册中心（服务发现 + 配置中心，单机模式）
   nacos:
@@ -188,6 +228,27 @@ services:
     ports:
       - "8848:8848"   # Nacos 控制台
       - "9848:9848"   # Nacos gRPC 通信
+    networks:
+      - boxue-net
+
+# ==================== 网络定义 ====================
+# 所有服务统一挂到这张自定义 bridge 网络上，效果：
+#   1. 网络名固定为 boxue-net，不随目录名/项目路径变化（默认网络叫 <目录名>_default）
+#   2. 内置 DNS 把「服务名」解析成容器当前 IP，容器重建换了 IP 也不影响调用方
+#   3. 服务之间还能用「容器名」（如 boxue-mysql）互访，因为 container_name 会额外注册一条别名
+#   4. 与宿主上其它 compose 项目（如 new-api）网络隔离，不会互相串味
+networks:
+  boxue-net:
+    name: boxue-net
+    driver: bridge
+    # 想让网段也固定下来的话，把下面 ipam 打开（默认由 Docker 从 172.17~172.31 里自动挑一个）：
+    # 注意：如果本机 VPN / 其它容器已占用该网段，会导致 docker compose up 直接报错，
+    #       报错就换一个网段，或者干脆保持注释状态。
+    # ipam:
+    #   config:
+    #     - subnet: 172.28.0.0/24
+    #       gateway: 172.28.0.1
+
 volumes:
   boxue-mysql-data:
   boxue-redis-data:
