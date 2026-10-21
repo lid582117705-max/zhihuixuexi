@@ -63,6 +63,10 @@ boxue:
     # 雪花 ID 机器号（0~1023）。订单号目前用 Redis 自增，这里保留是因为 SnowflakeIdGenerator 仍注册为 bean；
     # 若重新启用雪花，多实例部署时每台必须不同
     worker-id: 1
+  seckill:
+    # 秒杀初始库存：只在该课程的 Redis key 不存在时写入（setIfAbsent），所以改这里要先清旧 key 才生效。
+    # 可用环境变量 BOXUE_SECKILL_INIT_STOCK 覆盖
+    init-stock: 10
 
 logging:
   level:

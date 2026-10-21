@@ -168,6 +168,13 @@ mvn spring-boot:run
   - 标记用 `"NULL"` 而非空串：redis-cli 里一眼能看出是标记，不是脏数据
   - 验证：`/api/courses/999999` → Redis 值 `NULL`、TTL 55、二次请求日志变「命中空值标记」不再查库；`/api/courses/1` 仍是 JSON、TTL 596；列表 20 门正常
   - 未覆盖：缓存击穿（热点 key 过期瞬间打 DB），需要互斥锁/逻辑过期，另开一项
+- 1-14 ✅ 2026-10-21：秒杀初始库存改为配置项
+  - 问题：`SeckillStockInitializer` 写死 `setIfAbsent(key, "10")`，所有课程都 10 份，改库存要改代码重新打包；且没有参数校验
+  - 改动：`@Value("${boxue.seckill.init-stock:10}")`；`initStock <= 0` 时告警并跳过；日志打印库存来源
+  - yml 新增 `boxue.seckill.init-stock: 10`，可用环境变量 `BOXUE_SECKILL_INIT_STOCK` 覆盖
+  - **关键语义**：`setIfAbsent` 不覆盖已有 key → 改配置必须先清旧 key 才生效（类注释里写了清除命令）
+  - 验证：清空 20 个 key 重启 → 全部 =10；用环境变量覆盖成 3 且只删一个 key → 该 key=3、其余仍=10（同时证明「配置生效」和「不覆盖」）；恢复默认后该 key 回到 10
+  - 未解决：每门课不同库存（需 course 表加 stock 字段）、新课程免重启（懒初始化）
 - 【已解决】GitHub 仓库已公开（2026-10-13 API 验证 private=False）；网络不稳时 push 会失败（Connection reset），重试或开 VPN 即可，提交永远在本地安全。
 
 ## 全路线图一览（新线程按这个走）
