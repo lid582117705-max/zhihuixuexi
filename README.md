@@ -46,14 +46,14 @@ flowchart LR
 ```
 .
 ├── backend/                        # 后端 Maven 多模块工程（Java 17）
-│   ├── boxue-common/               # 公共库：JWT 工具 / 统一返回 / 全局异常 / 分布式锁
+│   ├── boxue-common/               # 公共库：JWT 工具 / 统一返回 / 全局异常 / 鉴权拦截器 / 分布式锁
 │   ├── boxue-user-service/         # 用户服务 :8081（注册 / 登录 / JWT / Redis 会话白名单）
 │   ├── boxue-course-service/       # 课程服务 :8082（课程 / Redis 缓存 / AI 助教 / RAG）
-│   ├── boxue-order-service/        # 订单服务 :8083（下单 / 支付 / 延时关单 / 秒杀）
+│   ├── boxue-order-service/        # 订单服务 :8083（下单 / 支付 / 延时关单 / 秒杀 / 死信兜底）
 │   └── boxue-gateway/              # 网关 :8080（路由转发 / JWT 统一鉴权）
 ├── frontend/                       # 前端 Vue3 + Vite（:5173，Vite 代理到网关）
-├── docker/                         # MySQL 建表 + 演示数据脚本
-└── docker-compose.yml              # 一键启动（基础设施 + 4 个业务服务 + 前端）
+├── docker/                         # MySQL 建表脚本 init.sql + 老库升级脚本
+└── docker-compose.yml              # 一键启动（基础设施 + 4 个业务服务 + 前端，共 9 个容器）
 ```
 
 ## 🛠️ 技术选型
@@ -123,10 +123,11 @@ flowchart LR
 | Node.js | 18+ |
 | Docker | 20.10+（含 Docker Compose） |
 
-### 1. 启动基础设施
+### 1. 启动基础设施（开发模式：后端在 IDEA / Maven 里跑）
 
 ```bash
-docker compose up -d
+# 只起中间件，不含业务服务
+docker compose up -d mysql redis rabbitmq nacos
 # MySQL(3307) / Redis(6379) / RabbitMQ(5672, 控制台 15672) / Nacos(8848)
 ```
 
@@ -150,6 +151,31 @@ npm run dev   # http://localhost:5173
 
 > 💡 端口说明：本机 3306 被占用，MySQL 映射到 3307；AI 对话需要 `DASHSCOPE_API_KEY`（阿里云百炼），模型为 qwen-turbo。
 
+## 🐳 一键部署（全部容器化，含前端）
+
+不想开 IDEA 的话，一条命令起全部 9 个容器：
+
+```bash
+# 1. 先打包（Dockerfile 是「拷现成 jar」，不是容器内编译）
+cd backend && mvn clean package -DskipTests && cd ..
+
+# 2. 构建镜像并启动
+docker compose up -d --build
+
+# 3. 验证
+docker compose ps
+curl http://localhost:8000/api/health
+```
+
+| 入口 | 地址 |
+| --- | --- |
+| 前端 | http://localhost:8000 |
+| 网关 | http://localhost:8080 |
+| Nacos 控制台 | http://localhost:8848 |
+| RabbitMQ 控制台 | http://localhost:15672（guest/guest） |
+
+> ⚠️ 老数据卷升级：`init.sql` 只在数据目录为空时执行。已有的库要补新表/新字段，手动跑 `docker/mysql/upgrade-course-fields.sql`。
+
 ## 📡 接口一览（统一经网关 :8080）
 
 | 服务 | 方法 | 路径 | 说明 | 鉴权 |
@@ -161,11 +187,19 @@ npm run dev   # http://localhost:5173
 | 用户 | POST | /api/users/logout | 退出，删除 Redis 会话 | 是 |
 | 课程 | GET | /api/courses | 课程列表（Redis 缓存） | 否 |
 | 课程 | GET | /api/courses/{id} | 课程详情（Redis 缓存） | 否 |
-| 订单 | POST | /api/orders | 下单（Redisson 防重） | 是 |
+| 订单 | POST | /api/orders | 下单（Redisson 防重 + Redis 分钟级订单号） | 是 |
 | 订单 | POST | /api/orders/{id}/pay | 模拟支付 | 是 |
+| 订单 | GET | /api/orders/{id} | 订单详情（仅本人） | 是 |
 | 订单 | GET | /api/orders/mine | 我的已购课程 | 是 |
+| 订单 | GET | /api/orders/mine/course-ids | 已购课程 id（服务间内部调用） | 是 |
 | 秒杀 | POST | /api/seckill/{courseId} | Lua 预扣 + MQ 削峰 | 是 |
+| 学习 | GET | /api/learn/chat | 学习对话历史（Redis List） | 是 |
 | AI | POST | /api/learn/ai/chat | AI 助教对话（记忆/工具/RAG） | 是 |
+| 运维 | GET | /api/dead-letters | 死信列表（最近 100 条） | 管理员 |
+| 运维 | POST | /api/dead-letters/{id}/replay | 重放死信到原队列 | 管理员 |
+| 运维 | POST | /api/dead-letters/{id}/ignore | 标记忽略 | 管理员 |
+
+> 管理员指 `boxue.admin.user-ids` 白名单里的 userId（compose 里由 `BOXUE_ADMIN_USER_IDS` 注入）。
 | AI | GET | /api/learn/chat | 学习对话历史 | 是 |
 
 ## 🗺️ 后续规划

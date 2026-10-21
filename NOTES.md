@@ -122,6 +122,34 @@ mvn spring-boot:run
   - 移除范围：docker-compose.monitor.yml、docker/prometheus/、docker/grafana/、4 个 yml 的 management 块、4 个 pom 的 actuator + micrometer 依赖、README 监控章节
   - 想恢复：`git checkout 717690a -- docker-compose.monitor.yml docker/prometheus docker/grafana` 后补回 yml/pom 配置
 - 1-6 ⏳ 待办：JMeter 压测报告（秒杀 + 缓存对比）
+- 1-7 ✅ 2026-10-20：演示数据扩充 + 商城页改版
+  - 课程 3 → 20 门，5 个分类（后端开发 4 / 前端开发 4 / 数据库 3 / AI 应用 3 / 架构与中间件 6）
+  - course 表加 3 个字段：category / lesson_count / student_count（+ idx_category）
+  - 老库升级脚本 `docker/mysql/upgrade-course-fields.sql`（一次性执行，ALTER + INSERT IGNORE，保留 id 1~3 不动，订单引用不失效）；init.sql 同步改表结构；DemoCourseInitializer 同步 20 门（空库自播种）
+  - 前端 StoreView：分类 tab + 关键词搜索（纯前端过滤，不打后端）+ 卡片显示分类标签/课时/在学人数 + 封面按分类配色 + 结果计数 + 空结果提示
+  - 演示账号（密码 123456）：demo_java（买 1/2/10/11）、demo_front（买 6/7/16/19）、demo_ai（买 12/13/14），共 11 单已支付
+  - 验证：/api/courses 返回 20 条含新字段；/api/orders/mine 返回 4 门课；前端产物含新页面代码
+  - ⚠️ 尚未 commit（等本地页面确认）
+- 1-8 ✅ 2026-10-21：订单号方案定稿（Redis 分钟级自增）
+  - 问题：原 `BX + yyyyMMddHHmmss + 4 位随机` 同秒并发会撞 `uk_order_no`，直接 500
+  - 演进：复杂手写雪花 → MP IdWorker → 简化手写雪花 → **最终 Redis INCR（分钟级）**
+  - 最终实现：`BX + yyyyMMddHHmm + 4 位分钟序号`，如 `BX2026102110300001`（18 位定长）
+    - key 按分钟分：`boxue:order:no:{yyyyMMddHHmm}`，`INCR` 原子自增；首次创建设 2 小时 TTL
+    - 选 Redis 的理由：原子 + 全局共享，多实例不用维护 workerId（雪花的最大成本）
+    - 代价：Redis 成为下单链路强依赖；持久化丢数据会让序号回退 → 由 `uk_order_no` 唯一索引兜底
+  - 雪花类 `boxue-common/id/SnowflakeIdGenerator` **保留但不再调用**（类注释已标明），其单测仍可单独跑
+  - 实测：连续下单 `...0001/0002/0003`；12 并发 12 个号 0 重复；DB 52 单 52 唯一；Redis key TTL≈7200s
+  - 边界：每分钟 9999 单以内定长 18 位，超过会变 5 位（不重复，只是变长）；要更稳把 `%04d` 改 `%05d`
+- 1-9 ⛔ 2026-10-20 尝试后回退：抽 boxue-base 模块消除 JwtUtil 重复
+  - 背景：网关是 WebFlux，common 引了 `spring-boot-starter-web`（Servlet），网关不能依赖 common，所以复制了一份 JwtUtil
+  - 尝试：新增 `boxue-base`（只依赖 spring-boot-starter + jjwt），JwtUtil 下沉，common/gateway 都依赖它；编译和登录链路都验证通过
+  - 回退原因：为一个 50 行的类新增一个 Maven 模块，对单体项目属于过度设计；两处重复代码反而更好读
+  - 结论：**保持现状（两份 JwtUtil）**，注释里已说明「真实项目会拆无 web 基础库」，面试讲到这个取舍即可
+  - 若以后真要多服务复用，再拆不迟
+- 1-10 ✅ 2026-10-20：README 与实际对齐
+  - 模块树加 boxue-base、修正 docker/ 描述（建表脚本 + 升级脚本，不含演示数据 INSERT）
+  - 快速开始拆成「开发模式（只起中间件）」和「一键部署（9 个容器）」两条路径
+  - 接口表补 6 个漏掉的接口：订单详情、mine/course-ids、学习历史、死信列表/重放/忽略
 - 【已解决】GitHub 仓库已公开（2026-10-13 API 验证 private=False）；网络不稳时 push 会失败（Connection reset），重试或开 VPN 即可，提交永远在本地安全。
 
 ## 全路线图一览（新线程按这个走）
@@ -165,6 +193,7 @@ mvn spring-boot:run
 | 1-3 | Knife4j 网关聚合接口文档 ✅ 2026-10-14：springdoc 2.9.1（子服务出 OpenAPI JSON）+ knife4j-gateway 4.5.0（网关聚合 UI），6 Controller 加 @Tag/@Operation；踩坑链：① 网关要开 spring.cloud.gateway.discovery.locator.enabled ② 鉴权白名单改 contains(/v3/api-docs) ③ 子服务 springdoc.api-docs.path 带前缀与聚合 URL 对齐（三层路径一致）④ 子服务 knife4j 4.5.0 与 springdoc 2.9.1/Spring 6.2 不兼容→移除，UI 与引擎分离（网关留 knife4j UI，子服务只用 springdoc） | 1~1.5 天 | ✅ |
 | 1-4 | docker-compose 一键部署 ✅ 2026-10-15：4 个 Dockerfile(temurin:17-jre) + pom 打包插件(fat jar) + 环境变量注入(宽松绑定) + 健康检查就绪；加餐：前端容器化(多阶段 node→nginx、/api 反代、history fallback、.dockerignore)；坑：容器内连中间件用服务名、fat jar 必须有 spring-boot-maven-plugin | 1 天 | ✅ |
 | 1-4b | ★502 大坑修复 ✅ 2026-10-15：后端容器重建后前端所有 /api 报 502（页面能开、网关独立访问正常）。根因=Nginx 开源版对 proxy_pass 域名**只在启动时解析一次并永久缓存 IP**，Docker 容器 IP 动态分配，gateway 重建换 IP 后前端仍打旧 IP → 502。`depends_on` 只管启动顺序，救不了。修复：`resolver 127.0.0.11 valid=10s ipv6=off;` + `set $upstream gateway:8080;` + `proxy_pass http://$upstream;`（**必须用变量形式，写死域名时 resolver 不生效**），10 秒自动恢复 | 0.5 天 | ✅ |
+| 1-4c | 网络显式化 ✅ 2026-10-20：9 个服务统一挂到自定义 bridge 网络 `boxue-net`（顶层 `networks.boxue-net.name` 固定）。背景：Compose 本就会自动建 `<目录名>_default` 并让所有服务自动入网，但网络名随目录名漂移，故显式命名解耦。**全程用服务名不用 IP**：容器 IP 由 Docker DHCP 分配，重建会变，写死 IP 必埋雷；Docker 内置 DNS(127.0.0.11) 按服务名/容器名解析到当前 IP。验证：`docker network inspect boxue-net` 9 个容器齐、容器内 `getent hosts mysql` 通、Nacos 4 个实例注册为 172.20.0.x、经 8000 端口 /api 返回 200；旧网 `zhihuixuexi_default` 已空并删除 | 0.5 小时 | ✅ |
 | 1-5 | ~~Actuator + Prometheus + Grafana~~ ⛔ 2026-10-20 已移除：曾于 2026-10-15 完成（4 服务 /actuator/prometheus + monitor compose + 面板 4701），后判断业务无监控诉求、面试难讲深，整体剥离；坑记录保留：actuator 默认只开 health 要显式 include、monitor 不能单独启动必须 -f 合并、宿主 3000 被 wslrelay 占→grafana 用 3001 | 0.5~1 天 | ⛔ 已移除 |
 | 1-6 | JMeter 压测报告（秒杀 Lua vs 无锁、缓存 vs 无缓存对比）★差异化王牌 | 1~1.5 天 | ⏳ |
 
