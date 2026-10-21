@@ -155,6 +155,12 @@ mvn spring-boot:run
   - 改动：常量下沉为 `UserService.TOKEN_KEY_PREFIX`（private）；删除整个类；网关注释改为「前缀必须与 UserService.TOKEN_KEY_PREFIX 一致」
   - 遗留：网关是 WebFlux 不能依赖 common，所以 `boxue:auth:` 字面量仍有两处（网关 + UserService），两边注释互相指认
   - 验证：5 模块编译通过；登录 → Redis 出现 `boxue:auth:8` → /me 200 → 退出 → key 消失 → 旧 token 401
+- 1-12 ✅ 2026-10-21：Feign 加超时 + 关闭读超时重试
+  - 问题：全项目没配超时，默认 `readTimeout=60s`；下单在 `@Transactional` 里调 Feign，下游卡住时线程和 DB 连接一起被占（Hikari 默认 10 个连接）→ 10 个并发就能拖垮订单服务
+  - 改动：order-service / course-service 的 yml 加 `spring.cloud.openfeign.client.config.default`（connect 3s / read 5s）
+  - 踩坑：只加超时不够——`spring-retry` 在 classpath 上，`RetryableFeignBlockingLoadBalancerClient` 会自动重试一次，实测 5s 变 **10s**；补 `spring.cloud.loadbalancer.retry.enabled=false` 后回到 5.06s
+  - 读超时不该重试：下游已经卡住，重试只会放大压力（retry storm）并把用户等待翻倍
+  - 验证：`docker pause course-service` → 下单 5.06s 返回「系统繁忙」；unpause 后 72ms 正常
 - 【已解决】GitHub 仓库已公开（2026-10-13 API 验证 private=False）；网络不稳时 push 会失败（Connection reset），重试或开 VPN 即可，提交永远在本地安全。
 
 ## 全路线图一览（新线程按这个走）

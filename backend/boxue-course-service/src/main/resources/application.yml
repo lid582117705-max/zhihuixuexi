@@ -8,6 +8,19 @@ spring:
     nacos:
       discovery:
         server-addr: 127.0.0.1:8848   # Nacos 注册中心地址(Docker 起的容器)
+    # OpenFeign 超时：默认 readTimeout 是 60 秒，下游卡住时会把线程和 DB 连接一起占死，
+    # 这里收紧到 3s/5s，让失败足够快（超时不是让请求失败，而是让失败别拖垮整个服务）
+    openfeign:
+      client:
+        config:
+          default:
+            connect-timeout: 3000
+            read-timeout: 5000
+    # 关掉 LoadBalancer 的自动重试：spring-retry 在 classpath 上时，Feign 读超时后会自动再试一次，
+    # 5s 变成 10s，而且下游已经卡住，重试只会加重它的负担（retry storm）
+    loadbalancer:
+      retry:
+        enabled: false
   datasource:
     url: jdbc:mysql://127.0.0.1:3307/boxue?useUnicode=true&characterEncoding=UTF-8&connectionCollation=utf8mb4_unicode_ci&serverTimezone=Asia/Shanghai&useSSL=false&allowPublicKeyRetrieval=true
     username: boxue
