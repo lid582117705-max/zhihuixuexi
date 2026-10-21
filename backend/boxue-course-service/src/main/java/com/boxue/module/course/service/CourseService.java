@@ -33,6 +33,19 @@ public class CourseService {
     /** 缓存过期时间：10 分钟（防止永远不变，保证最终能看到新数据） */
     private static final Duration CACHE_TTL = Duration.ofMinutes(10);
 
+    /**
+     * 空值标记：DB 查不到时往缓存写这个字符串，防止同一个不存在的 id 反复打 DB（缓存穿透）。
+     * 用 "NULL" 而不是空串，是为了在 redis-cli 里一眼能看出这是标记而不是脏数据。
+     */
+    private static final String NULL_MARK = "NULL";
+
+    /**
+     * 空值缓存时间：必须比正常缓存短。
+     * 如果课程刚创建或刚重新上架，缓存里的"不存在"会让它最多 60 秒看不到，这是可接受的延迟；
+     * 用 10 分钟就太久了。
+     */
+    private static final Duration NULL_TTL = Duration.ofSeconds(60);
+
     public List<Course> listOnline() {
         // 第 1 步：先查缓存
         String cached = redisTemplate.opsForValue().get(CACHE_LIST_KEY);
@@ -82,6 +95,11 @@ public class CourseService {
         // 第 1 步：先查缓存
         String cached = redisTemplate.opsForValue().get(key);
         if (cached != null) {
+            // 命中空值标记：说明之前查过 DB 确实没有，直接拒绝，不再打库
+            if (NULL_MARK.equals(cached)) {
+                log.info("[缓存] 课程 {} 命中空值标记，直接拒绝", id);
+                throw new BizException("课程不存在或已下架");
+            }
             log.info("[缓存] 课程 {} 命中缓存", id);
             try {
                 return objectMapper.readValue(cached, Course.class);
@@ -94,6 +112,13 @@ public class CourseService {
         log.info("[缓存] 课程 {} 未命中，查数据库", id);
         Course course = courseMapper.selectById(id);
         if (course == null || course.getStatus() == null || course.getStatus() != 1) {
+            // 查不到也写一个空值标记（TTL 短），下一次同 id 直接命中，不再穿透到 DB
+            try {
+                redisTemplate.opsForValue().set(key, NULL_MARK, NULL_TTL);
+            } catch (Exception e) {
+                // 写缓存失败不能盖掉业务异常，否则用户看到的是 Redis 报错
+                log.warn("[缓存] 课程 {} 写空值标记失败", id, e);
+            }
             throw new BizException("课程不存在或已下架");
         }
 

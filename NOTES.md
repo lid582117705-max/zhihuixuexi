@@ -161,6 +161,13 @@ mvn spring-boot:run
   - 踩坑：只加超时不够——`spring-retry` 在 classpath 上，`RetryableFeignBlockingLoadBalancerClient` 会自动重试一次，实测 5s 变 **10s**；补 `spring.cloud.loadbalancer.retry.enabled=false` 后回到 5.06s
   - 读超时不该重试：下游已经卡住，重试只会放大压力（retry storm）并把用户等待翻倍
   - 验证：`docker pause course-service` → 下单 5.06s 返回「系统繁忙」；unpause 后 72ms 正常
+- 1-13 ✅ 2026-10-21：课程详情缓存空值，防缓存穿透
+  - 问题：`getById` 查不到时直接抛异常、不写缓存，同一个不存在的 id 每次都要打 DB（缓存穿透，恶意刷 id 或前端 bug 循环都能打穿）
+  - 改动：`CourseService` 加 `NULL_MARK="NULL"` + `NULL_TTL=60s`；命中空标记直接抛 `BizException`；DB 查不到时写空标记（写失败只告警，不盖掉业务异常）
+  - 空值 TTL 用 60 秒而不是 10 分钟：避免课程刚创建/刚重新上架时长时间看不到
+  - 标记用 `"NULL"` 而非空串：redis-cli 里一眼能看出是标记，不是脏数据
+  - 验证：`/api/courses/999999` → Redis 值 `NULL`、TTL 55、二次请求日志变「命中空值标记」不再查库；`/api/courses/1` 仍是 JSON、TTL 596；列表 20 门正常
+  - 未覆盖：缓存击穿（热点 key 过期瞬间打 DB），需要互斥锁/逻辑过期，另开一项
 - 【已解决】GitHub 仓库已公开（2026-10-13 API 验证 private=False）；网络不稳时 push 会失败（Connection reset），重试或开 VPN 即可，提交永远在本地安全。
 
 ## 全路线图一览（新线程按这个走）
