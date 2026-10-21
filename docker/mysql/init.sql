@@ -26,11 +26,15 @@ CREATE TABLE IF NOT EXISTS `course` (
     `price`         DECIMAL(10, 2) NOT NULL DEFAULT 0.00 COMMENT '价格（元）',
     `description`   TEXT           COMMENT '课程简介',
     `teacher_name`  VARCHAR(64)    DEFAULT NULL COMMENT '讲师名',
+    `category`      VARCHAR(32)    NOT NULL DEFAULT '后端开发' COMMENT '课程分类（商城页筛选用）',
+    `lesson_count`  INT            NOT NULL DEFAULT 0 COMMENT '课时数',
+    `student_count` INT            NOT NULL DEFAULT 0 COMMENT '学习人数',
     `status`        TINYINT        NOT NULL DEFAULT 1 COMMENT '1上架 0下架',
     `create_time`   DATETIME       NOT NULL DEFAULT CURRENT_TIMESTAMP,
     `update_time`   DATETIME       NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     PRIMARY KEY (`id`),
-    KEY `idx_status` (`status`)
+    KEY `idx_status` (`status`),
+    KEY `idx_category` (`category`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='课程表';
 
 CREATE TABLE IF NOT EXISTS `orders` (
