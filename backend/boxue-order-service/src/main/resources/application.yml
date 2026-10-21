@@ -46,6 +46,10 @@ boxue:
   admin:
     # 管理员 userId 白名单（逗号分隔），只有这些用户能访问 /api/dead-letters/**
     user-ids: 4
+  snowflake:
+    # 雪花 ID 机器号（0~1023）。订单号目前用 Redis 自增，这里保留是因为 SnowflakeIdGenerator 仍注册为 bean；
+    # 若重新启用雪花，多实例部署时每台必须不同
+    worker-id: 1
 
 logging:
   level:

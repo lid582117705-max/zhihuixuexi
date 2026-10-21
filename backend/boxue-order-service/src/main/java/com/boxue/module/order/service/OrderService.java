@@ -23,16 +23,17 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.amqp.rabbit.connection.CorrelationData;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import java.util.UUID;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Duration;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.ThreadLocalRandom;
 import java.util.stream.Collectors;
 
 @Slf4j
@@ -40,11 +41,15 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class OrderService {
 
+    /** 订单号 Redis key 前缀：按分钟分 key，例如 boxue:order:no:202610211030 */
+    private static final String ORDER_NO_KEY_PREFIX = "boxue:order:no:";
+
     private final OrderMapper orderMapper;
     private final UserClient userClient;
     private final CourseClient courseClient;
     private final RabbitTemplate rabbitTemplate;
     private final RedissonClient redissonClient;
+    private final StringRedisTemplate redisTemplate;
 
     @Transactional(rollbackFor = Exception.class)
     public Order create(CreateOrderRequest request) {
@@ -276,9 +281,23 @@ public class OrderService {
         return userId;
     }
 
+    /**
+     * 订单号 = "BX" + yyyyMMddHHmm + 4 位分钟序号，例如 BX2026102110300001
+     *
+     * 为什么用 Redis INCR：原子操作 + 全局共享，多实例部署也不用维护 workerId。
+     * 为什么按分钟分 key：序号每分钟归零，"日期+时分"才有意义；跨分钟前缀不同，天然不会重复。
+     * 兜底：Redis 持久化丢数据可能让序号回退，orders.uk_order_no 唯一索引会拦住重复。
+     */
     private String generateOrderNo() {
-        String time = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMddHHmmss"));
-        int random = ThreadLocalRandom.current().nextInt(1000, 9999);
-        return "BX" + time + random;
+        String minute = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMddHHmm"));
+        String key = ORDER_NO_KEY_PREFIX + minute;
+
+        Long seq = redisTemplate.opsForValue().increment(key);
+        // 这一分钟的 key 第一次创建时设 2 小时过期，避免 Redis 里每分钟堆一个 key
+        if (seq != null && seq == 1L) {
+            redisTemplate.expire(key, Duration.ofHours(2));
+        }
+        // %04d 不足 4 位补零；超过 9999 会变成 5 位（不重复，只是长度变长）
+        return "BX" + minute + String.format("%04d", seq == null ? 0L : seq);
     }
 }
