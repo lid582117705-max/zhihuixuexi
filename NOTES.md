@@ -147,9 +147,14 @@ mvn spring-boot:run
   - 结论：**保持现状（两份 JwtUtil）**，注释里已说明「真实项目会拆无 web 基础库」，面试讲到这个取舍即可
   - 若以后真要多服务复用，再拆不迟
 - 1-10 ✅ 2026-10-20：README 与实际对齐
-  - 模块树加 boxue-base、修正 docker/ 描述（建表脚本 + 升级脚本，不含演示数据 INSERT）
+  - 模块树修正（订单服务补死信兜底、docker/ 描述改为建表+升级脚本，不含演示数据 INSERT）
   - 快速开始拆成「开发模式（只起中间件）」和「一键部署（9 个容器）」两条路径
   - 接口表补 6 个漏掉的接口：订单详情、mine/course-ids、学习历史、死信列表/重放/忽略
+- 1-11 ✅ 2026-10-21：删除死代码 AuthInterceptor
+  - 背景：6-3 改成网关统一鉴权后，这个 Servlet 拦截器再没被任何 WebConfig 注册，只剩 `TOKEN_KEY_PREFIX` 常量被 UserService 借用
+  - 改动：常量下沉为 `UserService.TOKEN_KEY_PREFIX`（private）；删除整个类；网关注释改为「前缀必须与 UserService.TOKEN_KEY_PREFIX 一致」
+  - 遗留：网关是 WebFlux 不能依赖 common，所以 `boxue:auth:` 字面量仍有两处（网关 + UserService），两边注释互相指认
+  - 验证：5 模块编译通过；登录 → Redis 出现 `boxue:auth:8` → /me 200 → 退出 → key 消失 → 旧 token 401
 - 【已解决】GitHub 仓库已公开（2026-10-13 API 验证 private=False）；网络不稳时 push 会失败（Connection reset），重试或开 VPN 即可，提交永远在本地安全。
 
 ## 全路线图一览（新线程按这个走）

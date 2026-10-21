@@ -1,7 +1,6 @@
 package com.boxue.module.user.service;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
-import com.boxue.common.auth.AuthInterceptor;
 import com.boxue.common.auth.JwtUtil;
 import com.boxue.common.auth.UserContext;
 import com.boxue.common.exception.AuthException;
@@ -23,6 +22,13 @@ import java.util.concurrent.TimeUnit;
 @Service
 @RequiredArgsConstructor
 public class UserService {
+
+    /**
+     * Redis 会话白名单 key 前缀，完整 key 形如 boxue:auth:7。
+     * 网关 AuthGlobalFilter 里用的是同样的字面量（WebFlux 不能依赖 common，没法共用常量），
+     * 改这里必须同步改网关，否则登录后网关认不出会话。
+     */
+    private static final String TOKEN_KEY_PREFIX = "boxue:auth:";
 
     private final UserMapper userMapper;
     private final PasswordEncoder passwordEncoder;
@@ -69,7 +75,7 @@ public class UserService {
 
         String token = jwtUtil.createToken(user.getId(), user.getUsername());
         redisTemplate.opsForValue().set(
-                AuthInterceptor.TOKEN_KEY_PREFIX + user.getId(),
+                TOKEN_KEY_PREFIX + user.getId(),
                 token,
                 jwtUtil.expireSeconds(),
                 TimeUnit.SECONDS
@@ -80,7 +86,7 @@ public class UserService {
     public void logout() {
         Long userId = UserContext.getUserId();
         if (userId != null) {
-            redisTemplate.delete(AuthInterceptor.TOKEN_KEY_PREFIX + userId);
+            redisTemplate.delete(TOKEN_KEY_PREFIX + userId);
         }
     }
 

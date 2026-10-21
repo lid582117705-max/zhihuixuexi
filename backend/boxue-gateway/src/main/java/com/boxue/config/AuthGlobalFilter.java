@@ -64,7 +64,7 @@ public class AuthGlobalFilter implements GlobalFilter, Ordered {
             // 2) JWT 签名/过期校验
             Claims claims = jwtUtil.parse(token);
             Long userId = Long.valueOf(claims.getSubject());
-            // 3) Redis 会话白名单（和原来 AuthInterceptor 完全一致：支持退出/顶号）
+            // 3) Redis 会话白名单（支持退出/顶号）：key 前缀必须和 user-service 的 UserService.TOKEN_KEY_PREFIX 一致
             String cached = redisTemplate.opsForValue().get("boxue:auth:" + userId);
             if (cached == null || !cached.equals(token)) {
                 return unauthorized(exchange);
