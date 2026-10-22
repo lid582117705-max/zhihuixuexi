@@ -17,8 +17,8 @@ import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.data.redis.core.script.DefaultRedisScript;
 import org.springframework.stereotype.Service;
 
-import java.util.Collections;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
@@ -27,6 +27,10 @@ import java.util.UUID;
  *
  * 为什么秒杀不用分布式锁？锁让请求"排队等"，每秒吞吐上不去；
  * Lua 脚本在 Redis 单线程里原子执行，让扣库存变成"一条命令"，不用排队等锁，吞吐高得多。
+ *
+ * 一人一单：Lua 里先用 Set 判断「这个用户是否已经抢过」，再扣库存，两步原子完成。
+ * 为什么不在数据库加 (user_id, course_id) 唯一索引兜底？秒杀是异步落单的，
+ * 等消费者插入时发现重复，用户早就看到「抢购成功」了，只能删单或进死信，体验更差。
  */
 @Slf4j
 @Service
@@ -34,6 +38,8 @@ import java.util.UUID;
 public class SeckillService {
 
     public static final String STOCK_KEY_PREFIX = "seckill:stock:";
+    /** 已抢到该课程的用户集合，用于「一人一单」判断 */
+    public static final String BOUGHT_KEY_PREFIX = "seckill:bought:";
 
     private final CourseClient courseClient;
     private final StringRedisTemplate redisTemplate;
@@ -41,14 +47,27 @@ public class SeckillService {
     private final ObjectMapper objectMapper;
 
     /**
-     * 扣库存 Lua 脚本（原子）：
-     * 库存 > 0 才 decr（减 1）并返回 1；库存 <= 0 直接返回 0。
-     * Redis 单线程执行整个脚本 = 两个请求不可能同时看到同一个库存数 → 不会超卖。
+     * 秒杀 Lua 脚本（原子）：查重 → 扣库存 → 记录已购，三步在 Redis 里一次执行完。
+     *
+     * KEYS[1] = 库存 key（seckill:stock:{courseId}）
+     * KEYS[2] = 已购用户集合 key（seckill:bought:{courseId}）
+     * ARGV[1] = userId
+     *
+     * 返回值：1 = 抢到；0 = 没库存；-1 = 这个用户已经抢过了
+     *
+     * 注意顺序：必须先查「抢过没」再查库存。反过来的话，已经抢过的人会把库存扣掉才发现重复。
      */
-    private static final String DECR_STOCK_LUA =
-            "if tonumber(redis.call('get', KEYS[1]) or '0') > 0 " +
-            "then redis.call('decr', KEYS[1]); return 1 " +
-            "else return 0 end";
+    private static final String SECKILL_LUA = """
+            if redis.call('sismember', KEYS[2], ARGV[1]) == 1 then
+                return -1
+            end
+            if tonumber(redis.call('get', KEYS[1]) or '0') > 0 then
+                redis.call('decr', KEYS[1])
+                redis.call('sadd', KEYS[2], ARGV[1])
+                return 1
+            end
+            return 0
+            """;
 
     public Map<String, Object> seckill(Long courseId) {
         Long userId = requireLoginUserId();
@@ -61,12 +80,21 @@ public class SeckillService {
         }
 
         String stockKey = STOCK_KEY_PREFIX + courseId;
+        String boughtKey = BOUGHT_KEY_PREFIX + courseId;
 
-        // 1) Lua 原子预扣库存：返回 1 = 扣成功（抢到了），0 = 没库存（抢光了）
-        Long ok = redisTemplate.execute(
-                new DefaultRedisScript<>(DECR_STOCK_LUA, Long.class),
-                Collections.singletonList(stockKey));
-        if (ok == null || ok == 0L) {
+        // 1) Lua 原子操作：查重 → 扣库存 → 记录已购（三步不可分割，避免并发下重复抢）
+        Long luaResult = redisTemplate.execute(
+                new DefaultRedisScript<>(SECKILL_LUA, Long.class),
+                List.of(stockKey, boughtKey),
+                String.valueOf(userId));
+
+        if (luaResult == null) {
+            throw new BizException("秒杀失败，请稍后重试");
+        }
+        if (luaResult == -1L) {
+            throw new BizException("每人限购一份，你已经抢到过了");
+        }
+        if (luaResult == 0L) {
             throw new BizException("手慢了，秒杀已结束");
         }
         log.info("[秒杀] 用户 {} 预扣库存成功，剩余={}", userId, redisTemplate.opsForValue().get(stockKey));
@@ -79,9 +107,11 @@ public class SeckillService {
                     objectMapper.writeValueAsString(message), cd);
             log.info("[秒杀] 用户 {} 抢到课程 {}，已发 MQ 待落单", userId, courseId);
         } catch (Exception e) {
-            // 3) 补偿：消息没发出去 → 把库存加回去，避免"库存扣了但订单没生成"
+            // 3) 补偿：消息没发出去 → 库存加回去，同时把用户从「已购」集合移除。
+            //    少了 SREM 的话，用户会被标记成"抢过"，却既没有订单也不能再抢，名额被永久占用。
             redisTemplate.opsForValue().increment(stockKey);
-            log.error("[秒杀] 发 MQ 失败，已回补库存 key={}", stockKey, e);
+            redisTemplate.opsForSet().remove(boughtKey, String.valueOf(userId));
+            log.error("[秒杀] 发 MQ 失败，已回补库存并释放名额 key={} userId={}", stockKey, userId, e);
             throw new BizException("秒杀人数过多，请重试");
         }
 
