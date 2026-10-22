@@ -41,6 +41,13 @@ public class SeckillService {
     /** 已抢到该课程的用户集合，用于「一人一单」判断 */
     public static final String BOUGHT_KEY_PREFIX = "seckill:bought:";
 
+    /**
+     * 已购集合的 TTL：7 天。
+     * 秒杀活动结束后这个集合就没用了，不设过期的话，课程越开越多，key 会一直堆在 Redis 里。
+     * 注意：每有一次新的抢购成功都会重置 TTL，所以语义是「最后一次抢购后 7 天过期」。
+     */
+    private static final long BOUGHT_TTL_SECONDS = 7 * 24 * 3600L;
+
     private final CourseClient courseClient;
     private final StringRedisTemplate redisTemplate;
     private final RabbitTemplate rabbitTemplate;
@@ -52,6 +59,7 @@ public class SeckillService {
      * KEYS[1] = 库存 key（seckill:stock:{courseId}）
      * KEYS[2] = 已购用户集合 key（seckill:bought:{courseId}）
      * ARGV[1] = userId
+     * ARGV[2] = 已购集合的过期秒数
      *
      * 返回值：1 = 抢到；0 = 没库存；-1 = 这个用户已经抢过了
      *
@@ -64,6 +72,7 @@ public class SeckillService {
             if tonumber(redis.call('get', KEYS[1]) or '0') > 0 then
                 redis.call('decr', KEYS[1])
                 redis.call('sadd', KEYS[2], ARGV[1])
+                redis.call('expire', KEYS[2], ARGV[2])
                 return 1
             end
             return 0
@@ -86,7 +95,8 @@ public class SeckillService {
         Long luaResult = redisTemplate.execute(
                 new DefaultRedisScript<>(SECKILL_LUA, Long.class),
                 List.of(stockKey, boughtKey),
-                String.valueOf(userId));
+                String.valueOf(userId),
+                String.valueOf(BOUGHT_TTL_SECONDS));
 
         if (luaResult == null) {
             throw new BizException("秒杀失败，请稍后重试");

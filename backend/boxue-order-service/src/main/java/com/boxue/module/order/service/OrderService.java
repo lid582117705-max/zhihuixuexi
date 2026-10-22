@@ -27,6 +27,7 @@ import org.springframework.data.redis.core.StringRedisTemplate;
 import java.util.UUID;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionTemplate;
 
 import java.time.Duration;
 import java.time.LocalDateTime;
@@ -50,8 +51,20 @@ public class OrderService {
     private final RabbitTemplate rabbitTemplate;
     private final RedissonClient redissonClient;
     private final StringRedisTemplate redisTemplate;
+    /** 下单用它手动控制事务边界：事务必须包在分布式锁内部（见 create 注释） */
+    private final TransactionTemplate transactionTemplate;
 
-    @Transactional(rollbackFor = Exception.class)
+    /**
+     * 下单。
+     *
+     * 注意这里**没有** @Transactional：Spring 的事务边界在方法外层（代理 commit 在方法返回之后），
+     * 如果方法上加事务、方法体里释放锁，就会出现「锁已释放、事务还没提交」的窗口——
+     * 另一个线程拿到锁后查不到这笔未提交的订单，照样能插一条重复单。
+     * 所以改成用 TransactionTemplate 把事务包在锁里面：commit 完成才 unlock。
+     *
+     * 另外 userMustExist / courseMustExist 两个 Feign 调用放在事务外，
+     * 避免拿着数据库连接等网络（远程调用慢会拖垮连接池）。
+     */
     public Order create(CreateOrderRequest request) {
         Long userId = requireLoginUserId();
         UserVO user = userMustExist(userId);
@@ -70,7 +83,8 @@ public class OrderService {
                 // 没抢到锁 = 已经有一笔"同样的人买同样的课"正在处理，直接拦下
                 throw new BizException("操作太快了，这笔订单正在处理中，请稍后再试");
             }
-            return doCreate(user, course);
+            // 事务在锁内执行：doCreate 里的查重能看到别人已提交的订单
+            return transactionTemplate.execute(status -> doCreate(user, course));
         } catch (InterruptedException e) {
             // 线程被中断（比如服务正在停机）：恢复中断标志是规范写法，不能吞掉中断信号
             Thread.currentThread().interrupt();
@@ -84,8 +98,18 @@ public class OrderService {
         }
     }
 
-    /** 真正创建订单的逻辑（原 create 的主体，被分布式锁包住） */
+    /** 真正创建订单的逻辑（在分布式锁 + 事务内执行，所以这里的查重是可靠的） */
     private Order doCreate(UserVO user, Course course) {
+        // 锁内查重：同一用户同一课程，只要还有「待支付 / 已支付」的订单，就不允许再下单。
+        // 之所以可靠，是因为事务包在锁内 —— 上一个线程 commit 完才解锁，这里一定看得到它。
+        Long exist = orderMapper.selectCount(new LambdaQueryWrapper<Order>()
+                .eq(Order::getUserId, user.getId())
+                .eq(Order::getCourseId, course.getId())
+                .in(Order::getStatus, 0, 1));
+        if (exist != null && exist > 0) {
+            throw new BizException("你已经购买过这门课了");
+        }
+
         Order order = new Order();
         order.setOrderNo(generateOrderNo());
         order.setUserId(user.getId());

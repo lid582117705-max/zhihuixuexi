@@ -189,6 +189,14 @@ mvn spring-boot:run
   - 集合不会膨胀：只有扣库存成功才 `sadd`，集合大小 ≤ 库存上限
   - 业务决策：抢到后取消订单**不允许**再抢（一旦 `sadd` 就永久占用名额）
   - 验证：同一用户并发 10 次 → **1 次成功 + 9 次「每人限购一份」**，库存 10→9，集合 1 个元素；换 userId=10 再抢 → 成功（库存 9→8，集合 {8,10}），重复抢被拦
+  - 📌 **待办（下次改动一起做）**：`seckill:bought:{courseId}` 集合没有 TTL。元素数受库存上限约束不会爆，但课程多了 key 数量会一直累积。计划加「活动结束后 N 天过期」，与库存 key 的 TTL 保持一致
+- 1-17 ✅ 2026-10-22：下单「锁 + 事务」边界修正 + 锁内查重 + 秒杀集合 TTL
+  - 问题1：`create()` 标了 `@Transactional`，但锁在方法体 `finally` 里释放。Spring 事务由代理控制，**commit 发生在方法返回之后** → 存在「锁已释放、事务未提交」的窗口，另一个线程拿锁后查不到这笔未提交订单，仍能插重复单
+  - 问题2：`doCreate()` 根本没有查重，锁只能防并发、防不了「先后」重复下单
+  - 改动：去掉 `create` 的 `@Transactional`，注入 `TransactionTemplate` 把事务包进锁内（commit 完成才 unlock）；`userMustExist`/`courseMustExist` 两个 Feign 调用移到事务外；`doCreate` 开头补「同用户 + 同课程 + status in (0,1)」查重
+  - 关键点：**不要抽成 `@Transactional` 私有方法**——自调用不走代理，注解直接失效
+  - 顺带完成待办：`seckill:bought:{courseId}` 加 7 天 TTL（Lua 里 `expire`，TTL 由 `ARGV[2]` 传入）
+  - 验证：并发 10 次下单 → **1 成功 + 9「你已经购买过这门课了」**，DB 仅 1 条；顺序重复下单被拦；秒杀后 bought 集合 `ttl=604798`，去重仍生效
 - 【已解决】GitHub 仓库已公开（2026-10-13 API 验证 private=False）；网络不稳时 push 会失败（Connection reset），重试或开 VPN 即可，提交永远在本地安全。
 
 ## 全路线图一览（新线程按这个走）
