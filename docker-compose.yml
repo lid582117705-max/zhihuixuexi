@@ -62,8 +62,10 @@ services:
       dockerfile: boxue-user-service/Dockerfile
     container_name: boxue-user-service
     restart: unless-stopped
-    ports:
-      - "8081:8081"
+    # 只在 boxue-net 内可见，不映射到宿主机：对外统一走网关（8080），
+    # 否则任何人都能直连 8081 并伪造 X-User-Id 冒充任意用户
+    expose:
+      - "8081"
     environment:
       SPRING_DATASOURCE_URL: "jdbc:mysql://mysql:3306/boxue?useUnicode=true&characterEncoding=UTF-8&connectionCollation=utf8mb4_unicode_ci&serverTimezone=Asia/Shanghai&useSSL=false&allowPublicKeyRetrieval=true"
       SPRING_DATASOURCE_USERNAME: boxue
@@ -87,8 +89,9 @@ services:
       dockerfile: boxue-course-service/Dockerfile
     container_name: boxue-course-service
     restart: unless-stopped
-    ports:
-      - "8082:8082"
+    # 同上：不映射到宿主机，只允许网关通过服务名访问
+    expose:
+      - "8082"
     environment:
       SPRING_DATASOURCE_URL: "jdbc:mysql://mysql:3306/boxue?useUnicode=true&characterEncoding=UTF-8&connectionCollation=utf8mb4_unicode_ci&serverTimezone=Asia/Shanghai&useSSL=false&allowPublicKeyRetrieval=true"
       SPRING_DATASOURCE_USERNAME: boxue
@@ -114,8 +117,9 @@ services:
       dockerfile: boxue-order-service/Dockerfile
     container_name: boxue-order-service
     restart: unless-stopped
-    ports:
-      - "8083:8083"
+    # 同上：不映射到宿主机，只允许网关通过服务名访问
+    expose:
+      - "8083"
     environment:
       SPRING_DATASOURCE_URL: "jdbc:mysql://mysql:3306/boxue?useUnicode=true&characterEncoding=UTF-8&connectionCollation=utf8mb4_unicode_ci&serverTimezone=Asia/Shanghai&useSSL=false&allowPublicKeyRetrieval=true"
       SPRING_DATASOURCE_USERNAME: boxue

@@ -175,6 +175,12 @@ mvn spring-boot:run
   - **关键语义**：`setIfAbsent` 不覆盖已有 key → 改配置必须先清旧 key 才生效（类注释里写了清除命令）
   - 验证：清空 20 个 key 重启 → 全部 =10；用环境变量覆盖成 3 且只删一个 key → 该 key=3、其余仍=10（同时证明「配置生效」和「不覆盖」）；恢复默认后该 key 回到 10
   - 未解决：每门课不同库存（需 course 表加 stock 字段）、新课程免重启（懒初始化）
+- 1-15 ✅ 2026-10-22：业务服务端口不再发布到宿主机（堵住 X-User-Id 冒充）
+  - 问题：compose 把 8081/8082/8083 发布到宿主机，而服务端无条件信任 `X-User-Id` → 宿主机直连即可冒充任意用户，网关 JWT 鉴权被绕过
+  - 改动：三个服务 `ports` → `expose`（只声明容器端口，不发布到宿主机），对外统一走网关 8080
+  - 评估后**放弃**的第二层（网关剥离客户端 `X-User-Id`）：实测 `AuthGlobalFilter` 的 `.header()` 是**替换**语义（带 `X-User-Id: 1` 请求仍返回 token 用户 id=8）；且白名单接口（health / register / login / courses / docs）没有一个读 `UserContext`，当前无利用面。作为潜在隐患记录，日后若在白名单接口里用 `UserContext` 需重新评估
+  - 验证：宿主机 `curl 8081/8082/8083` → **exit 7 连接被拒**；网关 `/api/health` 200；登录、课程列表 20 门、下单、我的课程全部正常
+  - 踩坑：本机设了 `https_proxy=http://127.0.0.1:59726`，直接 `curl localhost:808x` 会走代理并返回 **502**（代理连不上目标），必须加 `--noproxy '*'` 才看到真实的 connection refused
 - 【已解决】GitHub 仓库已公开（2026-10-13 API 验证 private=False）；网络不稳时 push 会失败（Connection reset），重试或开 VPN 即可，提交永远在本地安全。
 
 ## 全路线图一览（新线程按这个走）
